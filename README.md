@@ -1,9 +1,11 @@
 ﻿
 ## AspireRunner
 
-A dotnet tool for running the [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview) that's bundled with the [aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=dotnet-cli%2Cunix)
+A dotnet tool for running the Aspire Dashboard that's bundled with the [aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=dotnet-cli%2Cunix).
 
-The dashboard can be used to display opentelemetry data (traces, metrics and logs) from any application (doesn't have to be dotnet).
+The dashboard can be used to display opentelemetry data (traces, metrics and logs) from any application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview))
+
+<a href="https://www.nuget.org/packages/AspireRunner">![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner?style=flat&logo=nuget&color=%230078d4)</a>
 
 ## Installation
 
@@ -18,13 +20,10 @@ dotnet tool install -g AspireRunner
 ## Usage
 
 ```bash
-aspire-dashboard.exe <options>
-
-# or using the dotnet CLI
-dotnet aspire-dashboard <options>
+aspire-dashboard <options>
 
 Options:
-  -p, --port         (Default: 18888) The port the dashboard will listen on
+  -p, --port         (Default: 18888) The port the dashboard will be available on
 
   -o, --otlp-port    (Default: 4317) The port the OTLP server will listen on
 
