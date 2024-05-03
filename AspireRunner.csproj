@@ -10,10 +10,27 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
 
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>aspire-dashboard</ToolCommandName>
         <PackageOutputPath>./nupkg</PackageOutputPath>
+        <Authors>SaifAqqad</Authors>
+        <Description>A runner for the dotnet Aspire Dashboard</Description>
+        <PackageProjectUrl>https://github.com/SaifAqqad/AspireRunner</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/SaifAqqad/AspireRunner.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>aspire aspire-dashboard opentelemetry otel</PackageTags>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="CommandLineParser" Version="2.9.1"/>
+    </ItemGroup>
 
     <PropertyGroup>
         <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
@@ -30,8 +47,5 @@
     <PropertyGroup Condition="'$(IsLinux)'=='true'">
         <DefineConstants>linux</DefineConstants>
     </PropertyGroup>
-    <ItemGroup>
-      <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    </ItemGroup>
 
 </Project>
