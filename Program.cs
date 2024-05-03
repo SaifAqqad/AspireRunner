@@ -124,7 +124,7 @@ internal static partial class Program
             return Path.GetDirectoryName(dotnetPath);
         }
 
-        var paths = Environment.GetEnvironmentVariable("PATH")?.Split(';') ?? [];
+        var paths = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? [];
         foreach (var path in paths)
         {
             dotnetPath = Path.Combine(path, DotnetExecutable);
