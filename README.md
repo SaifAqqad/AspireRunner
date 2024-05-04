@@ -27,6 +27,8 @@ Options:
 
   -o, --otlp-port    (Default: 4317) The port the OTLP server will listen on
 
+  -k, --otlp-key     The API key to use for the OTLP server
+
   -s, --https        (Default: true) Use HTTPS instead of HTTP
 
   -a, --auth         Use browser token authentication for the dashboard
