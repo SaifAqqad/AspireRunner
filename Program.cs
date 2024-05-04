@@ -36,15 +36,28 @@ internal static partial class Program
             return ReturnCodes.DotnetCliError;
         }
 
-        if (dotnet.InstallationPath is null)
+        if (dotnet.SdkPath is null)
         {
             Console.Error.WriteLine("ERROR: Could not find the dotnet SDK installation directory");
             return ReturnCodes.DotnetCliError;
         }
 
-        Console.WriteLine($"Found dotnet installation directory at \"{dotnet.InstallationPath}\"");
+        Console.WriteLine($"Found dotnet installation directory at \"{dotnet.SdkPath}\"");
 
-        var packsFolder = Path.Combine(dotnet.InstallationPath, "packs");
+        var packsFolder = dotnet.GetPacksFolders()
+            .FirstOrDefault(packs => Directory
+                .GetDirectories(packs)
+                .Any(p => p.Contains(AspireSdkName))
+            );
+
+        if (packsFolder is null)
+        {
+            Console.Error.WriteLine("ERROR: Could not find a dotnet packs folder with the Aspire workload installed");
+            return ReturnCodes.AspireInstallationError;
+        }
+
+        Console.WriteLine($"Found Aspire workload at \"{packsFolder}\"");
+
         var aspireDashboardPack = Directory.GetDirectories(packsFolder)
             .FirstOrDefault(p => p.Contains(AspireSdkName));
 
@@ -83,13 +96,16 @@ internal static partial class Program
             ["Dashboard__Frontend__EndpointUrls"] = $"{protocol}://localhost:{arguments.DashboardPort}"
         };
 
-        dotnet.Run(
+        var process = dotnet.Run(
             arguments: ["exec", Path.Combine(aspirePath, AspireDashboardDll)],
             workingDirectory: aspirePath,
             environement: aspireConfig,
             outputHandler: line => DashboardOutputHandler(line, arguments.LaunchBrowser),
             errorHandler: error => Console.Error.WriteLine($"\t{error}")
         );
+
+        Console.WriteLine($"Process ID: {process.Id}"); 
+        process.WaitForExit();
 
         return ReturnCodes.Success;
     }
@@ -105,7 +121,14 @@ internal static partial class Program
         if (launchBrowser && DashboardSuccessMessage().Match(line) is { Success: true } match)
         {
             // Open the dashboard in the default browser
-            LaunchBrowser(match.Groups["url"].Value);
+            try
+            {
+                LaunchBrowser(match.Groups["url"].Value);
+            }
+            catch
+            {
+                Console.Error.WriteLine("ERROR: Failed to open the dashboard in the default browser");
+            }
         }
     }
 

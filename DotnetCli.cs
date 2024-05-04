@@ -15,11 +15,16 @@ public partial class DotnetCli
 
     public string CliPath { get; }
 
-    public string? InstallationPath { get; private set; }
+    public string? DataPath { get; }
+
+    public string? SdkPath { get; private set; }
 
     private DotnetCli(string path)
     {
         CliPath = path;
+
+        var dataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
+        DataPath = Directory.Exists(dataFolderPath) ? dataFolderPath : null;
     }
 
     public string Run(string arguments)
@@ -39,7 +44,7 @@ public partial class DotnetCli
         return process.StandardOutput.ReadToEnd();
     }
 
-    public void Run(string[] arguments, string? workingDirectory = null, IDictionary<string, string>? environement = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
+    public Process Run(string[] arguments, string? workingDirectory = null, IDictionary<string, string>? environement = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
     {
         var processStartInfo = new ProcessStartInfo(Path.Combine(CliPath, Executable), arguments)
         {
@@ -65,6 +70,7 @@ public partial class DotnetCli
             throw new InvalidOperationException("Failed to start dotnet process");
         }
 
+        Console.CancelKeyPress += (_, _) => process.Kill(true);
         if (outputHandler != null)
         {
             process.OutputDataReceived += (_, e) =>
@@ -91,10 +97,10 @@ public partial class DotnetCli
             process.BeginErrorReadLine();
         }
 
-        process.WaitForExit();
+        return process;
     }
 
-    public string? GetInstallationPath()
+    public string? GetSdkPath()
     {
         var sdksOutput = Run("--list-sdks");
         var sdks = sdksOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
@@ -102,9 +108,34 @@ public partial class DotnetCli
         var sdkPath = sdks.Select(s => SdkOutputRegex().Match(s))
             .Where(m => m.Success)
             .Select(m => (Version: m.Groups[1].Value, Path: m.Groups[2].Value))
-            .MaxBy(s => s.Version.ParseVersion());
+            .MaxBy(s => s.Version.ParseVersion()).Path;
 
-        return InstallationPath = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(sdkPath.Path));
+        return SdkPath = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(sdkPath));
+    }
+
+    public string[] GetPacksFolders()
+    {
+        var folders = new List<string>();
+
+        if (SdkPath != null)
+        {
+            var sdkPacksFolder = Path.Combine(SdkPath, "packs");
+            if (Directory.Exists(sdkPacksFolder))
+            {
+                folders.Add(sdkPacksFolder);
+            }
+        }
+
+        if (DataPath != null)
+        {
+            var dataPacksFolder = Path.Combine(DataPath, "packs");
+            if (Directory.Exists(dataPacksFolder))
+            {
+                folders.Add(dataPacksFolder);
+            }
+        }
+
+        return folders.ToArray();
     }
 
     public static DotnetCli? TryCreate()
@@ -116,7 +147,7 @@ public partial class DotnetCli
         }
 
         var cli = new DotnetCli(cliPath);
-        cli.GetInstallationPath();
+        cli.GetSdkPath();
 
         return cli;
     }
