@@ -5,7 +5,7 @@ A dotnet tool for running the Aspire Dashboard that's bundled with the [aspire w
 
 The dashboard can be used to display opentelemetry data (traces, metrics and logs) from any application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview))
 
-<a href="https://www.nuget.org/packages/AspireRunner">![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner?style=flat&logo=nuget&color=%230078d4)</a>
+![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner)
 
 ## Installation
 
