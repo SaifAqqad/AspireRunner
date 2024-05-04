@@ -10,6 +10,9 @@ public record Arguments
     [Option('o', "otlp-port", Default = 4317, HelpText = "The port the OTLP server will listen on")]
     public int OtlpPort { get; init; }
 
+    [Option('k', "otlp-key", HelpText = "The API key to use for the OTLP server")]
+    public string? OtlpKey { get; set; }
+
     [Option('s', "https", Default = true, HelpText = "Use HTTPS instead of HTTP")]
     public bool UseHttps { get; init; }
 
