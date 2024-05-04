@@ -1,4 +1,4 @@
-﻿namespace AspireRunner.CommandLine;
+﻿namespace AspireRunner.Tool.CommandLine;
 
 public static class ReturnCodes
 {

@@ -1,12 +1,12 @@
-﻿using AspireRunner.Extensions;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
-namespace AspireRunner;
+namespace AspireRunner.Tool;
 
 public partial class DotnetCli
 {
+    public const string DataFolderName = ".dotnet";
 #if windows
     public const string Executable = "dotnet.exe";
 #else
@@ -15,16 +15,21 @@ public partial class DotnetCli
 
     public string CliPath { get; }
 
-    public string? DataPath { get; }
+    public string DataPath { get; }
 
     public string? SdkPath { get; private set; }
 
     private DotnetCli(string path)
     {
         CliPath = path;
+        
+        var dataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), DataFolderName);
+        if (!Directory.Exists(dataFolderPath))
+        {
+            Directory.CreateDirectory(dataFolderPath);
+        }
 
-        var dataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
-        DataPath = Directory.Exists(dataFolderPath) ? dataFolderPath : null;
+        DataPath = dataFolderPath;
     }
 
     public string Run(string arguments)
@@ -108,7 +113,7 @@ public partial class DotnetCli
         var sdkPath = sdks.Select(s => SdkOutputRegex().Match(s))
             .Where(m => m.Success)
             .Select(m => (Version: m.Groups[1].Value, Path: m.Groups[2].Value))
-            .MaxBy(s => s.Version.ParseVersion()).Path;
+            .MaxBy(s => new Version(s.Version)).Path;
 
         return SdkPath = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(sdkPath));
     }
@@ -126,13 +131,10 @@ public partial class DotnetCli
             }
         }
 
-        if (DataPath != null)
+        var dataPacksFolder = Path.Combine(DataPath, "packs");
+        if (Directory.Exists(dataPacksFolder))
         {
-            var dataPacksFolder = Path.Combine(DataPath, "packs");
-            if (Directory.Exists(dataPacksFolder))
-            {
-                folders.Add(dataPacksFolder);
-            }
+            folders.Add(dataPacksFolder);
         }
 
         return folders.ToArray();

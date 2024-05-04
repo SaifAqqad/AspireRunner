@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A79C9E77-492E-4AB4-9E48-C011E6D4F745}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspireRunner.Tool", "src\AspireRunner.Tool\AspireRunner.Tool.csproj", "{FBB8955B-4B32-44BD-8DD1-8EB6C25844BA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FBB8955B-4B32-44BD-8DD1-8EB6C25844BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBB8955B-4B32-44BD-8DD1-8EB6C25844BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBB8955B-4B32-44BD-8DD1-8EB6C25844BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBB8955B-4B32-44BD-8DD1-8EB6C25844BA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FBB8955B-4B32-44BD-8DD1-8EB6C25844BA} = {A79C9E77-492E-4AB4-9E48-C011E6D4F745}
+	EndGlobalSection
+EndGlobal
