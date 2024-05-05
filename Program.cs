@@ -1,5 +1,4 @@
 ﻿using AspireRunner.CommandLine;
-using AspireRunner.Extensions;
 using CommandLine;
 using CommandLine.Text;
 using System.Diagnostics;
@@ -65,7 +64,7 @@ internal static partial class Program
 
         var newestVersion = Directory.GetDirectories(packsFolder)
             .Select(d => new DirectoryInfo(d))
-            .MaxBy<DirectoryInfo, Version>(d => d.Name.ParseVersion());
+            .MaxBy<DirectoryInfo, Version>(d => new Version(d.Name));
 
         if (newestVersion is null)
         {
