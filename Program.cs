@@ -10,6 +10,7 @@ internal static partial class Program
 {
     private const string AspireSdkName = "Aspire.Dashboard.Sdk";
     private const string AspireDashboardDll = "Aspire.Dashboard.dll";
+    private const string AspireDashboardInstanceFile = "aspire-dashboard.pid";
 
     public static int Main(string[] args)
     {
@@ -72,6 +73,15 @@ internal static partial class Program
             return ReturnCodes.AspireInstallationError;
         }
 
+        // Kill any existing Aspire Dashboard instance
+        var instanceFile = Path.Combine(dotnet.DataPath, AspireDashboardInstanceFile);
+        var existingPid = File.Exists(instanceFile) && int.TryParse(File.ReadAllText(instanceFile), out var pid) ? pid : default(int?);
+        if (existingPid is not null && Process.GetProcesses().Any(p => p.Id == existingPid && p.ProcessName == "dotnet"))
+        {
+            Console.WriteLine($"Found existing Aspire Dashboard instance with PID {existingPid}");
+            Process.GetProcessById(existingPid.Value).Kill();
+        }
+
         var protocol = arguments.UseHttps ? "https" : "http";
         var aspirePath = Path.Combine(newestVersion.FullName, "tools");
         var aspireConfig = new Dictionary<string, string>
@@ -93,8 +103,9 @@ internal static partial class Program
         );
 
         Console.WriteLine($"Process ID: {process.Id}");
-        process.WaitForExit();
+        File.WriteAllText(instanceFile, process.Id.ToString());
 
+        process.WaitForExit();
         return ReturnCodes.Success;
     }
 
