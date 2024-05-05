@@ -23,17 +23,19 @@ dotnet tool install -g AspireRunner
 aspire-dashboard <options>
 
 Options:
+  -b, --browser      Launch the dashboard in the default browser
+
   -p, --port         (Default: 18888) The port the dashboard will be available on
 
   -o, --otlp-port    (Default: 4317) The port the OTLP server will listen on
 
   -k, --otlp-key     The API key to use for the OTLP server
 
-  -s, --https        (Default: true) Use HTTPS instead of HTTP
+  -s, --https        (Default: true) Use HTTPS instead of HTTP, this applies to both the dashboard and the OTLP server
 
   -a, --auth         Use browser token authentication for the dashboard
 
-  -b, --browser      Launch the dashboard in the default browser
+  -m, --multiple     Allow running multiple instances of the dashboard
 
   --help             Display this help screen.
 

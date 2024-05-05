@@ -65,7 +65,7 @@ internal static partial class Program
 
         var newestVersion = Directory.GetDirectories(packsFolder)
             .Select(d => new DirectoryInfo(d))
-            .MaxBy<DirectoryInfo, Version>(d => new Version(d.Name));
+            .MaxBy(d => new Version(d.Name));
 
         if (newestVersion is null)
         {
@@ -73,13 +73,14 @@ internal static partial class Program
             return ReturnCodes.AspireInstallationError;
         }
 
-        // Kill any existing Aspire Dashboard instance
-        var instanceFile = Path.Combine(dotnet.DataPath, AspireDashboardInstanceFile);
-        var existingPid = File.Exists(instanceFile) && int.TryParse(File.ReadAllText(instanceFile), out var pid) ? pid : default(int?);
-        if (existingPid is not null && Process.GetProcesses().Any(p => p.Id == existingPid && p.ProcessName == "dotnet"))
+        if (!arguments.AllowMultipleInstances)
         {
-            Console.WriteLine($"Found existing Aspire Dashboard instance with PID {existingPid}");
-            Process.GetProcessById(existingPid.Value).Kill();
+            var previousInstance = GetPreviousInstance(dotnet.DataPath);
+            if (previousInstance is not null)
+            {
+                Console.WriteLine($"Killing existing Aspire Dashboard instance with PID {previousInstance.Id}");
+                previousInstance.Kill(true);
+            }
         }
 
         var protocol = arguments.UseHttps ? "https" : "http";
@@ -102,10 +103,9 @@ internal static partial class Program
             errorHandler: error => Console.Error.WriteLine($"\t{error}")
         );
 
-        Console.WriteLine($"Process ID: {process.Id}");
-        File.WriteAllText(instanceFile, process.Id.ToString());
-
+        PersistInstance(process, dotnet.DataPath);
         process.WaitForExit();
+
         return ReturnCodes.Success;
     }
 
@@ -137,6 +137,30 @@ internal static partial class Program
         }
     }
 
+    private static void PersistInstance(Process process, string path)
+    {
+        Console.WriteLine($"Process ID: {process.Id}");
+        File.WriteAllText(Path.Combine(path, AspireDashboardInstanceFile), process.Id.ToString());
+    }
+
+    private static Process? GetPreviousInstance(string path)
+    {
+        var instanceFile = Path.Combine(path, AspireDashboardInstanceFile);
+        if (!File.Exists(instanceFile) || !int.TryParse(File.ReadAllText(instanceFile), out var pid))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Process.GetProcessById(pid) is { ProcessName: "dotnet" } p ? p : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static void LaunchBrowser(string url)
     {
 #if windows
@@ -162,6 +186,6 @@ internal static partial class Program
 #endif
     }
 
-    [GeneratedRegex(@"((?:Login to the dashboard at)|(?:Now listening on:)) +(?<url>https?:\/\/[^\s]+)")]
+    [GeneratedRegex(@"((?:Login to the dashboard at)|(?:Now listening on:)) +(?<url>https?:\/\/[^\s]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex UrlRegex();
 }
