@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
-namespace AspireRunner;
+namespace AspireRunner.Tool;
 
 public partial class DotnetCli
 {

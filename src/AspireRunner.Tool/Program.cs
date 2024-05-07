@@ -1,10 +1,10 @@
-﻿using AspireRunner.CommandLine;
+﻿using AspireRunner.Tool.CommandLine;
 using CommandLine;
 using CommandLine.Text;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-namespace AspireRunner;
+namespace AspireRunner.Tool;
 
 internal static partial class Program
 {
