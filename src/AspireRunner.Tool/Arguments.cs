@@ -1,6 +1,6 @@
 ﻿using CommandLine;
 
-namespace AspireRunner.Tool.CommandLine;
+namespace AspireRunner.Tool;
 
 public record Arguments
 {

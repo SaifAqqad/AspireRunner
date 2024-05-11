@@ -1,20 +1,19 @@
-﻿
-## AspireRunner
+﻿## AspireRunner
 
 A dotnet tool for running the Aspire Dashboard that's bundled with the [aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=dotnet-cli%2Cunix).
 
-The dashboard can be used to display opentelemetry data (traces, metrics and logs) from any application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview))
+The dashboard can be used to display OpenTelemetry data (traces, metrics, and logs) from any application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview))
 
-[![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner)](https://www.nuget.org/packages/AspireRunner)
+[![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.Tool?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.Tool)](https://www.nuget.org/packages/AspireRunner.Tool)
 
 ## Installation
 
 ```bash
-# Install the aspire workload (can be skipped if already installed)
+# Install the aspire workload (skip if already installed)
 dotnet workload install aspire
 
 # Install the AspireRunner tool
-dotnet tool install -g AspireRunner
+dotnet tool install -g AspireRunner.Tool
 ```
 
 ## Usage
