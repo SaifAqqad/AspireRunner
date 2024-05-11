@@ -33,6 +33,10 @@
         <PackageReference Include="SemanticVersioning" Version="2.0.2" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\AspireRunner\AspireRunner.Core\AspireRunner.Core.csproj" />
+    </ItemGroup>
+
     <PropertyGroup>
         <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
         <IsOSX Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">true</IsOSX>
