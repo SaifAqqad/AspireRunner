@@ -60,14 +60,13 @@ public class AspireDashboard
 
         var aspirePath = Path.Combine(newestVersionPath, "tools");
         var envOptions = BuildOptionsEnvVars(options ?? _options);
-        
-        Console.WriteLine(JsonSerializer.Serialize(envOptions));
+
     }
 
-    private static IDictionary<string, string> BuildOptionsEnvVars(AspireDashboardOptions options)
+    private static Dictionary<string, string> BuildOptionsEnvVars(AspireDashboardOptions options)
     {
-        var envVars = new Dictionary<string, string>();
-        var jsonObject = JsonSerializer.SerializeToNode(options)?.AsObject().Flatten() ?? [];
+        var envVars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var jsonObject = JsonSerializer.SerializeToNode(options)!.AsObject().Flatten();
 
         foreach (var property in jsonObject)
         {
@@ -76,8 +75,21 @@ public class AspireDashboard
                 continue;
             }
 
-            var key = property.Key.Replace("$.", string.Empty).Replace(".", "__").ToUpperInvariant();
-            envVars[key] = property.Value.ToString();
+            var envVarName = property.Key
+                .Replace("$", "Dashboard")
+                .Replace(".", "__")
+                .ToUpperInvariant();
+            envVars[envVarName] = property.Value.ToString();
+        }
+
+        if (envVars.TryGetValue("DASHBOARD__OTLP__ENDPOINTURL", out var otlpUrl))
+        {
+            envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = otlpUrl;
+        }
+
+        if (envVars.TryGetValue("DASHBOARD__FRONTEND__ENDPOINTURLS", out var frontendUrls))
+        {
+            envVars["ASPNETCORE_URLS"] = frontendUrls;
         }
 
         return envVars;

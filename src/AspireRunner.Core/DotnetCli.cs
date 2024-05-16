@@ -158,7 +158,7 @@ public partial class DotnetCli
 
         return folders.ToArray();
     }
-    
+
     /// <summary>
     /// Runs <c>dotnet workload list</c> and parses the output to get all installed workloads.
     /// </summary>
