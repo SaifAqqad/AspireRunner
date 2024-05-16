@@ -7,7 +7,7 @@ public partial class DotnetCli
     [GeneratedRegex(@"([\d\.]+)\s+(?:\[(.+)\])?", RegexOptions.Compiled)]
     private static partial Regex SdkOutputRegex();
 
-    [GeneratedRegex(@"-+\n([\w\W]+?)\n\n", RegexOptions.Compiled)]
+    [GeneratedRegex(@"-+\r?\n([\w\W]+?)\r?\n\r?\n", RegexOptions.Compiled)]
     private static partial Regex TableContentRegex();
 
     [GeneratedRegex(@"\s{2,}")]

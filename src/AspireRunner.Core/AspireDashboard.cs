@@ -1,6 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using AspireRunner.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace AspireRunner;
 
@@ -28,7 +30,7 @@ public class AspireDashboard
         return _dotnetCli is { SdkPath: not null } && _dotnetCli.GetInstalledWorkloads().Contains("aspire");
     }
 
-    public void Start()
+    public void Start(AspireDashboardOptions? options = null)
     {
         if (_process != null)
         {
@@ -55,10 +57,29 @@ public class AspireDashboard
         {
             throw new ApplicationException("Failed to find the newest version of the Aspire Dashboard.");
         }
-        
-        var aspirePath = Path.Combine(newestVersionPath, "tools");
-        
-        // TODO: 
 
+        var aspirePath = Path.Combine(newestVersionPath, "tools");
+        var envOptions = BuildOptionsEnvVars(options ?? _options);
+        
+        Console.WriteLine(JsonSerializer.Serialize(envOptions));
+    }
+
+    private static IDictionary<string, string> BuildOptionsEnvVars(AspireDashboardOptions options)
+    {
+        var envVars = new Dictionary<string, string>();
+        var jsonObject = JsonSerializer.SerializeToNode(options)?.AsObject().Flatten() ?? [];
+
+        foreach (var property in jsonObject)
+        {
+            if (property.Value is null || property.Value.GetValueKind() is JsonValueKind.Null)
+            {
+                continue;
+            }
+
+            var key = property.Key.Replace("$.", string.Empty).Replace(".", "__").ToUpperInvariant();
+            envVars[key] = property.Value.ToString();
+        }
+
+        return envVars;
     }
 }

@@ -30,11 +30,12 @@
 
     <ItemGroup>
         <PackageReference Include="CommandLineParser" Version="2.9.1"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
         <PackageReference Include="SemanticVersioning" Version="2.0.2" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AspireRunner\AspireRunner.Core\AspireRunner.Core.csproj" />
+      <ProjectReference Include="..\AspireRunner.Core\AspireRunner.Core.csproj" />
     </ItemGroup>
 
     <PropertyGroup>

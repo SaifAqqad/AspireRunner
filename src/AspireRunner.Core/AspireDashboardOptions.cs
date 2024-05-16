@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
+using System.Text.Json.Serialization;
 
 namespace AspireRunner;
 
@@ -14,6 +15,7 @@ public class AspireDashboardOptions : IOptions<AspireDashboardOptions>
 
     public TelemetryLimitOptions? TelemetryLimits { get; set; }
 
+    [JsonIgnore]
     public AspireDashboardOptions Value => this;
 }
 
