@@ -17,6 +17,21 @@ public class AspireDashboardOptions : IOptions<AspireDashboardOptions>
 
     public TelemetryLimitOptions? TelemetryLimits { get; set; }
 
+    /// <summary>
+    /// Whether to pipe the output of the Aspire Dashboard process to the logger.
+    /// </summary>
+    public bool PipeOutput { get; set; } = true;
+
+    /// <summary>
+    /// Whether to automatically launch the browser when the Aspire Dashboard starts.
+    /// </summary>
+    public bool AutoLaunchBrowser { get; set; }
+
+    /// <summary>
+    /// Defines how existing instances should be handled when starting the dashboard.
+    /// </summary>
+    public SingleInstanceHandling SingleInstanceHandling { get; set; } = SingleInstanceHandling.Ignore;
+
     [JsonIgnore]
     public AspireDashboardOptions Value => this;
 }
@@ -92,4 +107,23 @@ public enum OtlpAuthMode
 {
     Unsecured,
     ApiKey
+}
+
+public enum SingleInstanceHandling
+{
+    /// <summary>
+    /// Disables checking for running instances of the Aspire Dashboard.
+    /// New instances will fail to start if an existing one is using the same port
+    /// </summary>
+    Ignore = 0,
+
+    /// <summary>
+    /// Logs a warning and exits if an existing instance is found.
+    /// </summary>
+    WarnAndExit = 1,
+
+    /// <summary>
+    /// Kills the existing instance and starts a new one.
+    /// </summary>
+    ReplaceExisting = 2,
 }

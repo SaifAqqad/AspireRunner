@@ -2,35 +2,44 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
-using System.Text.Json;
 
 namespace AspireRunner;
 
-public class AspireDashboard
+public partial class AspireDashboard
 {
-    private const string AspireSdkName = "Aspire.Dashboard.Sdk";
-    private const string AspireDashboardDll = "Aspire.Dashboard.dll";
-    private const string AspireDashboardInstanceFile = "aspire-dashboard.pid";
-
+    private readonly string _runnerFolder;
     private readonly DotnetCli _dotnetCli;
     private readonly AspireDashboardOptions _options;
     private readonly ILogger<AspireDashboard> _logger;
 
     private Process? _process;
 
+    /// <summary>
+    /// Triggered when the Aspire Dashboard has started and the UI is ready.
+    /// <br/>
+    /// The dashboard URL (including the browser token) is passed to the event handler.
+    /// </summary>
+    public event Action<string>? DashboardStarted;
+
     public AspireDashboard(DotnetCli dotnetCli, IOptions<AspireDashboardOptions> options, ILogger<AspireDashboard> logger)
     {
         _logger = logger;
         _dotnetCli = dotnetCli;
         _options = options.Value;
+
+        _runnerFolder = Path.Combine(_dotnetCli.DataPath, DataFolder);
+        if (!Directory.Exists(_runnerFolder))
+        {
+            Directory.CreateDirectory(_runnerFolder);
+        }
     }
 
     public bool IsInstalled()
     {
-        return _dotnetCli is { SdkPath: not null } && _dotnetCli.GetInstalledWorkloads().Contains("aspire");
+        return _dotnetCli is { SdkPath: not null } && _dotnetCli.GetInstalledWorkloads().Contains(WorkloadId);
     }
 
-    public void Start(AspireDashboardOptions? options = null)
+    public void Start()
     {
         if (_process != null)
         {
@@ -42,56 +51,170 @@ public class AspireDashboard
             throw new ApplicationException("The Aspire Dashboard is not installed.");
         }
 
+        switch (_options.SingleInstanceHandling)
+        {
+            case SingleInstanceHandling.ReplaceExisting:
+            {
+                TryGetRunningProcess()?.Kill(true);
+                break;
+            }
+            case SingleInstanceHandling.WarnAndExit:
+            {
+                var runningInstance = TryGetRunningProcess();
+                if (runningInstance != null)
+                {
+                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", runningInstance.Id);
+                    return;
+                }
+
+                break;
+            }
+        }
+
+        var aspirePath = GetInstallationPath();
+        if (aspirePath == null)
+        {
+            throw new ApplicationException("Failed to locate the Aspire Dashboard installation.");
+        }
+
         _logger.LogInformation("Starting the Aspire Dashboard...");
 
-        var packsFolder = _dotnetCli.GetPacksFolders()
-            .SelectMany(Directory.GetDirectories)
-            .First(dir => dir.Contains(AspireSdkName));
-
-        var newestVersionPath = Directory.GetDirectories(packsFolder)
-            .Select(d => new DirectoryInfo(d))
-            .MaxBy(d => new Version(d.Name))?
-            .FullName;
-
-        if (newestVersionPath == null)
+        try
         {
-            throw new ApplicationException("Failed to find the newest version of the Aspire Dashboard.");
+            _process = _dotnetCli.Run(["exec", Path.Combine(aspirePath, DllName)], aspirePath, _options.ToEnvironmentVariables(), OutputHandler, ErrorHandler);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to start the Aspire Dashboard.");
+            return;
         }
 
-        var aspirePath = Path.Combine(newestVersionPath, "tools");
-        var envOptions = BuildOptionsEnvVars(options ?? _options);
-
+        PersistProcessId();
     }
 
-    private static Dictionary<string, string> BuildOptionsEnvVars(AspireDashboardOptions options)
+    private string? GetInstallationPath()
     {
-        var envVars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var jsonObject = JsonSerializer.SerializeToNode(options)!.AsObject().Flatten();
-
-        foreach (var property in jsonObject)
+        try
         {
-            if (property.Value is null || property.Value.GetValueKind() is JsonValueKind.Null)
+            var packsFolder = _dotnetCli.GetPacksFolders()
+                .SelectMany(Directory.GetDirectories)
+                .First(dir => dir.Contains(SdkName));
+
+            var newestVersionPath = Directory.GetDirectories(packsFolder)
+                .Select(d => new DirectoryInfo(d))
+                .MaxBy(d => new Version(d.Name))?
+                .FullName;
+
+            return newestVersionPath == null ? null : Path.Combine(newestVersionPath, "tools");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public void Stop()
+    {
+        if (_process == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _logger.LogInformation("Stopping the Aspire Dashboard...");
+            _process.Kill(true);
+        }
+        catch (InvalidOperationException)
+        {
+            _logger.LogWarning("The Aspire Dashboard has already been stopped.");
+        }
+
+        _process = null;
+    }
+
+    private void PersistProcessId()
+    {
+        File.WriteAllText(InstanceFile, _process!.Id.ToString());
+    }
+
+    private Process? TryGetRunningProcess()
+    {
+        var instanceFile = Path.Combine(_runnerFolder, InstanceFile);
+        if (!File.Exists(instanceFile) || !int.TryParse(File.ReadAllText(instanceFile), out var pid))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Process.GetProcessById(pid) is { ProcessName: "dotnet" } p ? p : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void OutputHandler(string output)
+    {
+        if (_options.PipeOutput)
+        {
+            _logger.LogInformation("Aspire: {Message}", output);
+        }
+
+        if (_options.Frontend.AuthMode is FrontendAuthMode.BrowserToken && output.Contains(DashboardStartedConsoleMessage, StringComparison.OrdinalIgnoreCase))
+        {
+            // Wait for the authentication token to be printed
+            return;
+        }
+
+        if (LaunchUrlRegex().Match(output) is { Success: true } match)
+        {
+            var url = match.Groups["url"].Value;
+            if (_options.AutoLaunchBrowser)
             {
-                continue;
+                try
+                {
+                    LaunchBrowser(url);
+                }
+                catch
+                {
+                    _logger.LogWarning("Failed to launch the browser.");
+                }
             }
 
-            var envVarName = property.Key
-                .Replace("$", "Dashboard")
-                .Replace(".", "__")
-                .ToUpperInvariant();
-            envVars[envVarName] = property.Value.ToString();
+            DashboardStarted?.Invoke(url);
         }
+    }
 
-        if (envVars.TryGetValue("DASHBOARD__OTLP__ENDPOINTURL", out var otlpUrl))
+    private void ErrorHandler(string msg)
+    {
+        _logger.LogError("Aspire: {Message}", msg);
+    }
+
+    private static void LaunchBrowser(string url)
+    {
+#if windows
+        Process.Start(new ProcessStartInfo
         {
-            envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = otlpUrl;
-        }
-
-        if (envVars.TryGetValue("DASHBOARD__FRONTEND__ENDPOINTURLS", out var frontendUrls))
+            UseShellExecute = true,
+            FileName = url
+        });
+#elif linux
+        Process.Start(new ProcessStartInfo
         {
-            envVars["ASPNETCORE_URLS"] = frontendUrls;
-        }
-
-        return envVars;
+            FileName = "xdg-open",
+            UseShellExecute = true,
+            Arguments = $"\"{url}\""
+        });
+#elif macos
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "open",
+            UseShellExecute = true,
+            Arguments = $"\"{url}\""
+        });
+#endif
     }
 }
