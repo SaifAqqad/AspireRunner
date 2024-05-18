@@ -11,9 +11,12 @@
         <InvariantGlobalization>true</InvariantGlobalization>
 
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <IncludeSymbols>true</IncludeSymbols>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>portable</DebugType>
         <PackageOutputPath>../../dist</PackageOutputPath>
+
         <Authors>SaifAqqad</Authors>
         <Description>A runner for the dotnet Aspire Dashboard</Description>
         <PackageProjectUrl>https://github.com/SaifAqqad/AspireRunner</PackageProjectUrl>
