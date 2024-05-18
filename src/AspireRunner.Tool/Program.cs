@@ -1,27 +1,68 @@
-﻿using AspireRunner;
+﻿using AspireRunner.Core;
+using AspireRunner.Tool;
+using CommandLine;
+using CommandLine.Text;
 using Microsoft.Extensions.Logging;
 
-var dotnetCli = DotnetCli.TryCreate();
+var logger = new ConsoleLogger<AspireDashboard>();
 
-if (dotnetCli == null)
+logger.LogInformation("{Title}", Bold().Green("Aspire Dashboard Runner"));
+
+var argsResult = Parser.Default.ParseArguments<Arguments>(args);
+if (argsResult.Errors.Any() || argsResult.Value is null)
 {
-    Console.WriteLine("The dotnet CLI wasn't found.");
-    return;
-}
-
-var aspireDashboard = new AspireDashboard(dotnetCli, new AspireDashboardOptions() { }, new ConsoleLogger<AspireDashboard>());
-
-aspireDashboard.Start();
-
-
-class ConsoleLogger<T> : ILogger<T>
-{
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    if (argsResult.Errors.FirstOrDefault() is not (HelpRequestedError or VersionRequestedError))
     {
-        Console.WriteLine(formatter(state, exception));
+        logger.LogError("Invalid arguments");
     }
 
-    public bool IsEnabled(LogLevel logLevel) => true;
-
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    logger.LogInformation("{Usage}", HelpText.RenderUsageText(argsResult));
+    return ReturnCodes.InvalidArguments;
 }
+
+var arguments = argsResult.Value;
+var dotnet = DotnetCli.TryCreate();
+if (dotnet is null)
+{
+    logger.LogError("Could not find the dotnet CLI, make sure it is installed and available in the PATH");
+    return ReturnCodes.DotnetCliError;
+}
+
+var protocol = arguments.UseHttps ? "https" : "http";
+var dashboardOptions = new AspireDashboardOptions
+{
+    PipeOutput = false,
+    LaunchBrowser = arguments.LaunchBrowser,
+    Frontend = new FrontendOptions
+    {
+        EndpointUrls = $"{protocol}://localhost:{arguments.DashboardPort}",
+        AuthMode = arguments.UseAuth ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured
+    },
+    Otlp = new OtlpOptions
+    {
+        EndpointUrl = $"{protocol}://localhost:{arguments.OtlpPort}",
+        AuthMode = string.IsNullOrWhiteSpace(arguments.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey,
+        PrimaryApiKey = arguments.OtlpKey
+    },
+    SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
+};
+
+var aspireDashboard = new AspireDashboard(dotnet, dashboardOptions, logger);
+aspireDashboard.DashboardStarted += url => logger.LogInformation("The Aspire Dashboard is ready at {Url}", url);
+
+if (!aspireDashboard.IsInstalled())
+{
+    logger.LogError("""
+                    Failed to locate the Aspire Dashboard installation.
+
+                    Please make sure the Aspire workload is installed
+                    Run 'dotnet workload install aspire' to install it.
+                    """);
+
+    return ReturnCodes.AspireInstallationError;
+}
+
+aspireDashboard.Start();
+aspireDashboard.WaitForExit();
+
+return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;

@@ -1,19 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Version>0.0.5</Version>
+        <Version>1.0.0</Version>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <RuntimeIdentifiers>win-x64;osx-x64;linux-x64</RuntimeIdentifiers>
 
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>AspireRunner.Tool</RootNamespace>
         <InvariantGlobalization>true</InvariantGlobalization>
 
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>aspire-dashboard</ToolCommandName>
-        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageOutputPath>../../dist</PackageOutputPath>
         <Authors>SaifAqqad</Authors>
         <Description>A runner for the dotnet Aspire Dashboard</Description>
         <PackageProjectUrl>https://github.com/SaifAqqad/AspireRunner</PackageProjectUrl>
@@ -25,33 +26,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="README.md" Pack="true" PackagePath="\"/>
+        <None Include="README.md" Pack="true" PackagePath="./"/>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="CommandLineParser" Version="2.9.1"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
-        <PackageReference Include="SemanticVersioning" Version="2.0.2" />
+        <PackageReference Include="Crayon" Version="2.0.69" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\AspireRunner.Core\AspireRunner.Core.csproj" />
     </ItemGroup>
-
-    <PropertyGroup>
-        <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
-        <IsOSX Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">true</IsOSX>
-        <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">true</IsLinux>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(IsWindows)'=='true'">
-        <DefineConstants>windows</DefineConstants>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(IsOSX)'=='true'">
-        <DefineConstants>macos</DefineConstants>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(IsLinux)'=='true'">
-        <DefineConstants>linux</DefineConstants>
-    </PropertyGroup>
-
 </Project>

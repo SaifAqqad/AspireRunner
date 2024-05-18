@@ -11,6 +11,8 @@
         <InvariantGlobalization>true</InvariantGlobalization>
 
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageOutputPath>../../dist</PackageOutputPath>
         <Authors>SaifAqqad</Authors>
         <Description>A runner for the dotnet Aspire Dashboard</Description>
