@@ -1,4 +1,4 @@
-﻿namespace AspireRunner;
+﻿namespace AspireRunner.Core;
 
 public partial class AspireDashboard
 {

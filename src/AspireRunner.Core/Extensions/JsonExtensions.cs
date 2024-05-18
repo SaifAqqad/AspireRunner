@@ -1,7 +1,7 @@
-﻿namespace AspireRunner.Extensions;
-
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+
+namespace AspireRunner.Core.Extensions;
 
 public static class JsonExtensions
 {

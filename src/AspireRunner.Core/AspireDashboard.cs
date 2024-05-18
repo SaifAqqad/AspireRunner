@@ -1,10 +1,10 @@
-﻿using AspireRunner.Extensions;
+﻿using AspireRunner.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
 
-namespace AspireRunner;
+namespace AspireRunner.Core;
 
 public partial class AspireDashboard
 {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using System.Text.Json.Serialization;
 
-namespace AspireRunner;
+namespace AspireRunner.Core;
 
 /// <summary>
 /// Configuration options used by the Aspire Dashboard.

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace AspireRunner.Extensions;
+namespace AspireRunner.Core.Extensions;
 
 public static class OptionsExtensions
 {

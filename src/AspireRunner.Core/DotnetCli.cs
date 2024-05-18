@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace AspireRunner;
+namespace AspireRunner.Core;
 
 public partial class DotnetCli
 {
@@ -202,7 +202,7 @@ public partial class DotnetCli
     }
 
     /// <summary>
-    /// Ensures the existence of the dotnet data folder (<c>~/.dotnet</c>.) and returns its path. 
+    /// Ensures the existence of the dotnet data folder (<c>~/.dotnet</c>.) and returns its path.
     /// </summary>
     /// <returns>The path to the dotnet data folder.</returns>
     private static string GetOrCreateDataPath()
