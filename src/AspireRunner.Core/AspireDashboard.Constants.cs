@@ -15,4 +15,6 @@ public partial class AspireDashboard
     private const string LoginConsoleMessage = "Login to the dashboard at";
 
     private const string DashboardStartedConsoleMessage = "Now listening on:";
+
+    private const int DefaultErrorLogDelay = 2000;
 }

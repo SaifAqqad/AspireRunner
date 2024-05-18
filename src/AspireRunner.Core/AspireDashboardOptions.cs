@@ -5,10 +5,13 @@ namespace AspireRunner;
 
 /// <summary>
 /// Configuration options used by the Aspire Dashboard.
-/// <see href="https://github.com/dotnet/aspire/tree/v8.0.0-preview.6.24214.1/src/Aspire.Dashboard/Configuration"/> 
+/// <see href="https://github.com/dotnet/aspire/tree/v8.0.0-preview.6.24214.1/src/Aspire.Dashboard/Configuration"/>
 /// </summary>
 public class AspireDashboardOptions : IOptions<AspireDashboardOptions>
 {
+    /// <summary>
+    /// The application name to be displayed in the dashboard UI.
+    /// </summary>
     public string ApplicationName { get; set; } = "Aspire";
 
     public OtlpOptions Otlp { get; set; } = new();
@@ -18,19 +21,20 @@ public class AspireDashboardOptions : IOptions<AspireDashboardOptions>
     public TelemetryLimitOptions? TelemetryLimits { get; set; }
 
     /// <summary>
-    /// Whether to pipe the output of the Aspire Dashboard process to the logger.
+    /// Pipe the output of the Aspire Dashboard process to the logger.
     /// </summary>
     public bool PipeOutput { get; set; } = true;
 
     /// <summary>
-    /// Whether to automatically launch the browser when the Aspire Dashboard starts.
+    /// Automatically launch the browser when the Aspire Dashboard starts.
     /// </summary>
-    public bool AutoLaunchBrowser { get; set; }
+    public bool LaunchBrowser { get; set; }
 
     /// <summary>
     /// Defines how existing instances should be handled when starting the dashboard.
     /// </summary>
-    public SingleInstanceHandling SingleInstanceHandling { get; set; } = SingleInstanceHandling.Ignore;
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public SingleInstanceHandling SingleInstanceHandling { get; set; } = SingleInstanceHandling.WarnAndExit;
 
     [JsonIgnore]
     public AspireDashboardOptions Value => this;

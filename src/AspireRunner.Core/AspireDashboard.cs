@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.Text;
 
 namespace AspireRunner;
 
@@ -13,6 +14,8 @@ public partial class AspireDashboard
     private readonly ILogger<AspireDashboard> _logger;
 
     private Process? _process;
+    private StringBuilder? _lastError;
+    private DateTimeOffset? _lastErrorTime;
 
     /// <summary>
     /// Triggered when the Aspire Dashboard has started and the UI is ready.
@@ -20,6 +23,16 @@ public partial class AspireDashboard
     /// The dashboard URL (including the browser token) is passed to the event handler.
     /// </summary>
     public event Action<string>? DashboardStarted;
+
+    /// <summary>
+    /// Indicates whether the Aspire Dashboard process has encountered any errors.
+    /// </summary>
+    public bool HasErrors { get; private set; }
+
+    /// <summary>
+    /// Indicates whether the Aspire Dashboard process is currently running.
+    /// </summary>
+    public bool IsRunning => _process?.HasExited is false;
 
     public AspireDashboard(DotnetCli dotnetCli, IOptions<AspireDashboardOptions> options, ILogger<AspireDashboard> logger)
     {
@@ -133,6 +146,25 @@ public partial class AspireDashboard
         _process = null;
     }
 
+    public void WaitForExit()
+    {
+        _process?.WaitForExit();
+    }
+
+    public Task WaitForExitAsync(CancellationToken cancellationToken = default)
+    {
+        if (_process == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var tcs = new TaskCompletionSource();
+        _process.EnableRaisingEvents = true;
+        _process.Exited += (_, _) => tcs.SetResult();
+
+        return Task.WhenAny(tcs.Task, Task.Delay(-1, cancellationToken));
+    }
+
     private void PersistProcessId()
     {
         File.WriteAllText(InstanceFile, _process!.Id.ToString());
@@ -160,7 +192,7 @@ public partial class AspireDashboard
     {
         if (_options.PipeOutput)
         {
-            _logger.LogInformation("Aspire: {Message}", output);
+            _logger.LogInformation("{AspireOutput}", output);
         }
 
         if (_options.Frontend.AuthMode is FrontendAuthMode.BrowserToken && output.Contains(DashboardStartedConsoleMessage, StringComparison.OrdinalIgnoreCase))
@@ -172,7 +204,7 @@ public partial class AspireDashboard
         if (LaunchUrlRegex().Match(output) is { Success: true } match)
         {
             var url = match.Groups["url"].Value;
-            if (_options.AutoLaunchBrowser)
+            if (_options.LaunchBrowser)
             {
                 try
                 {
@@ -184,13 +216,50 @@ public partial class AspireDashboard
                 }
             }
 
+            // Since the logger is most likely exporting to otel we should directly log the URL to the console to ensure the user can see it
+            Console.WriteLine("The Aspire Dashboard is ready at {0}", url);
             DashboardStarted?.Invoke(url);
         }
     }
 
-    private void ErrorHandler(string msg)
+    private void ErrorHandler(string error)
     {
-        _logger.LogError("Aspire: {Message}", msg);
+        // To avoid spamming the otel logs with partial errors, we need to combine the error lines into a single error message and then log it
+        // This approach will combine the error lines as they're piped from the process, and then log them after a delay
+        // If the error line starts with a space, it's considered a continuation of the previous error line
+        // otherwise the previous error is logged and the new error will start to be collected
+
+        HasErrors = true;
+        _lastError ??= new StringBuilder();
+
+        if (error.StartsWith(' ') || error.Length == 0)
+        {
+            _lastError.AppendLine(error);
+            ResetErrorLogDelay();
+            return;
+        }
+
+        // Log the previous error before collecting the new one
+        _logger.LogError("{AspireError}", _lastError.ToString());
+
+        _lastError.Clear();
+        _lastError.AppendLine(error);
+        ResetErrorLogDelay();
+    }
+
+    private void ResetErrorLogDelay()
+    {
+        var currentTime = _lastErrorTime = DateTimeOffset.Now;
+        Task.Delay(DefaultErrorLogDelay).ContinueWith(_ =>
+        {
+            if (_lastError is null or { Length: 0 } || _lastErrorTime == null || _lastErrorTime != currentTime)
+            {
+                return;
+            }
+
+            _logger.LogError("{AspireError}", _lastError.ToString());
+            _lastError.Clear();
+        });
     }
 
     private static void LaunchBrowser(string url)
