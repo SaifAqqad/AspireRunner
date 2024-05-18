@@ -1,16 +1,12 @@
 ﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace AspireRunner.Core;
 
 public partial class DotnetCli
 {
     public const string DataFolderName = ".dotnet";
-#if windows
-    public const string Executable = "dotnet.exe";
-#else
-    public const string Executable = "dotnet";
-#endif
+
+    public static readonly string Executable = OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet";
 
     public string CliPath { get; private init; } = null!;
 
@@ -21,10 +17,10 @@ public partial class DotnetCli
     private DotnetCli() { }
 
     /// <summary>
-    /// Creates a new instance of the <see cref="DotnetCli"/> class.
+    /// Creates a new instance of the <see cref="AspireRunner.Core.DotnetCli"/> class.
     /// </summary>
     /// <returns>
-    /// A new instance of the <see cref="DotnetCli"/> class or null if the dotnet CLI wasn't found.
+    /// A new instance of the <see cref="AspireRunner.Core.DotnetCli"/> class or null if the dotnet CLI wasn't found.
     /// </returns>
     public static DotnetCli? TryCreate()
     {
@@ -231,7 +227,7 @@ public partial class DotnetCli
             return Path.GetDirectoryName(dotnetPath);
         }
 
-        var paths = GetEnvPath();
+        var paths = GetEnvPaths();
         foreach (var path in paths)
         {
             dotnetPath = Path.Combine(path, Executable);
@@ -249,7 +245,7 @@ public partial class DotnetCli
     /// </summary>
     /// <returns>A string array containing all paths in the system's <c>PATH</c> environment variable.</returns>
     /// <remarks>When running inside WSL, windows paths (like <c>/mnt/c/*</c>) will be excluded to avoid conflicts with windows dotnet installations</remarks>
-    private static string[] GetEnvPath()
+    private static string[] GetEnvPaths()
     {
         var pathEnv = Environment.GetEnvironmentVariable("PATH");
         if (string.IsNullOrWhiteSpace(pathEnv))
@@ -274,7 +270,7 @@ public partial class DotnetCli
     /// <returns>True if the current process is running inside WSL, false otherwise.</returns>
     private static bool IsRunningWsl()
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (!OperatingSystem.IsLinux())
         {
             return false;
         }

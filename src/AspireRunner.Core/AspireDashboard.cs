@@ -262,26 +262,31 @@ public partial class AspireDashboard
 
     private static void LaunchBrowser(string url)
     {
-#if windows
-        Process.Start(new ProcessStartInfo
+        if (OperatingSystem.IsWindows())
         {
-            UseShellExecute = true,
-            FileName = url
-        });
-#elif linux
-        Process.Start(new ProcessStartInfo
+            Process.Start(new ProcessStartInfo
+            {
+                UseShellExecute = true,
+                FileName = url
+            });
+        }
+        else if (OperatingSystem.IsLinux())
         {
-            FileName = "xdg-open",
-            UseShellExecute = true,
-            Arguments = $"\"{url}\""
-        });
-#elif macos
-        Process.Start(new ProcessStartInfo
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "xdg-open",
+                UseShellExecute = true,
+                Arguments = $"\"{url}\""
+            });
+        }
+        else if (OperatingSystem.IsMacOS())
         {
-            FileName = "open",
-            UseShellExecute = true,
-            Arguments = $"\"{url}\""
-        });
-#endif
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "open",
+                UseShellExecute = true,
+                Arguments = $"\"{url}\""
+            });
+        }
     }
 }
