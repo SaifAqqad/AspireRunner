@@ -167,7 +167,7 @@ public partial class AspireDashboard
 
     private void PersistProcessId()
     {
-        File.WriteAllText(InstanceFile, _process!.Id.ToString());
+        File.WriteAllText(Path.Combine(_runnerFolder, InstanceFile), _process!.Id.ToString());
     }
 
     private Process? TryGetRunningProcess()
