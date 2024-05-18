@@ -216,8 +216,6 @@ public partial class AspireDashboard
                 }
             }
 
-            // Since the logger is most likely exporting to otel we should directly log the URL to the console to ensure the user can see it
-            Console.WriteLine("The Aspire Dashboard is ready at {0}", url);
             DashboardStarted?.Invoke(url);
         }
     }
