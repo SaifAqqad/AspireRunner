@@ -25,7 +25,12 @@ jobs:
       - name: Package
         run: dotnet pack --no-build
 
-      - name: Publish
-        run: dotnet nuget push ".\dist\*.nupkg" --skip-duplicate -s nuget.org -k "$NUGET_API_KEY"
+      - name: Publish packages
+        run: dotnet nuget push ".\dist\*.nupkg" --skip-duplicate -s https://api.nuget.org/v3/index.json -k "$NUGET_API_KEY"
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Publish symbols
+        run: dotnet nuget push ".\dist\*.snupkg" --skip-duplicate -s https://api.nuget.org/v3/index.json -k "$NUGET_API_KEY"
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
