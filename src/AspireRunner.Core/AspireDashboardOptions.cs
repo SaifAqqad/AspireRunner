@@ -116,15 +116,15 @@ public enum OtlpAuthMode
 public enum SingleInstanceHandling
 {
     /// <summary>
+    /// Logs a warning and exits if an existing instance is found.
+    /// </summary>
+    WarnAndExit = 0,
+
+    /// <summary>
     /// Disables checking for running instances of the Aspire Dashboard.
     /// New instances will fail to start if an existing one is using the same port
     /// </summary>
-    Ignore = 0,
-
-    /// <summary>
-    /// Logs a warning and exits if an existing instance is found.
-    /// </summary>
-    WarnAndExit = 1,
+    Ignore = 1,
 
     /// <summary>
     /// Kills the existing instance and starts a new one.
