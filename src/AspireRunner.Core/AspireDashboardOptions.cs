@@ -18,23 +18,9 @@ public class AspireDashboardOptions : IOptions<AspireDashboardOptions>
 
     public FrontendOptions Frontend { get; set; } = new();
 
+    public RunnerOptions Runner { get; set; } = new();
+
     public TelemetryLimitOptions? TelemetryLimits { get; set; }
-
-    /// <summary>
-    /// Pipe the output of the Aspire Dashboard process to the logger.
-    /// </summary>
-    public bool PipeOutput { get; set; } = true;
-
-    /// <summary>
-    /// Automatically launch the browser when the Aspire Dashboard starts.
-    /// </summary>
-    public bool LaunchBrowser { get; set; }
-
-    /// <summary>
-    /// Defines how existing instances should be handled when starting the dashboard.
-    /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public SingleInstanceHandling SingleInstanceHandling { get; set; } = SingleInstanceHandling.WarnAndExit;
 
     [JsonIgnore]
     public AspireDashboardOptions Value => this;
@@ -99,6 +85,25 @@ public sealed class TelemetryLimitOptions
     public int MaxAttributeLength { get; set; } = int.MaxValue;
 
     public int MaxSpanEventCount { get; set; } = int.MaxValue;
+}
+
+public sealed class RunnerOptions
+{
+    /// <summary>
+    /// Pipe the output of the Aspire Dashboard process to the logger.
+    /// </summary>
+    public bool PipeOutput { get; set; } = true;
+
+    /// <summary>
+    /// Automatically launch the browser when the Aspire Dashboard starts.
+    /// </summary>
+    public bool LaunchBrowser { get; set; }
+
+    /// <summary>
+    /// Defines how existing instances should be handled when starting the dashboard.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public SingleInstanceHandling SingleInstanceHandling { get; set; } = SingleInstanceHandling.WarnAndExit;
 }
 
 public enum FrontendAuthMode

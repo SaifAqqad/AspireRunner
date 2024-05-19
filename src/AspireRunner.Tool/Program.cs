@@ -31,8 +31,6 @@ if (dotnet is null)
 var protocol = arguments.UseHttps ? "https" : "http";
 var dashboardOptions = new AspireDashboardOptions
 {
-    PipeOutput = false,
-    LaunchBrowser = arguments.LaunchBrowser,
     Frontend = new FrontendOptions
     {
         EndpointUrls = $"{protocol}://localhost:{arguments.DashboardPort}",
@@ -44,7 +42,12 @@ var dashboardOptions = new AspireDashboardOptions
         AuthMode = string.IsNullOrWhiteSpace(arguments.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey,
         PrimaryApiKey = arguments.OtlpKey
     },
-    SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
+    Runner = new RunnerOptions
+    {
+        PipeOutput = false,
+        LaunchBrowser = arguments.LaunchBrowser,
+        SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
+    }
 };
 
 var aspireDashboard = new AspireDashboard(dotnet, dashboardOptions, logger);

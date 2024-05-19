@@ -64,7 +64,7 @@ public partial class AspireDashboard
             throw new ApplicationException("The Aspire Dashboard is not installed.");
         }
 
-        switch (_options.SingleInstanceHandling)
+        switch (_options.Runner.SingleInstanceHandling)
         {
             case SingleInstanceHandling.ReplaceExisting:
             {
@@ -190,7 +190,7 @@ public partial class AspireDashboard
 
     private void OutputHandler(string output)
     {
-        if (_options.PipeOutput)
+        if (_options.Runner.PipeOutput)
         {
             _logger.LogInformation("{AspireOutput}", output);
         }
@@ -204,7 +204,7 @@ public partial class AspireDashboard
         if (LaunchUrlRegex().Match(output) is { Success: true } match)
         {
             var url = match.Groups["url"].Value;
-            if (_options.LaunchBrowser)
+            if (_options.Runner.LaunchBrowser)
             {
                 try
                 {
