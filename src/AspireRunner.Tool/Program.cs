@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 var logger = new ConsoleLogger<AspireDashboard>();
 
-logger.LogInformation("{Title}", Bold().Green("Aspire Dashboard Runner"));
+logger.LogInformation(Bold().Green("Aspire Dashboard Runner"));
 
 var argsResult = Parser.Default.ParseArguments<Arguments>(args);
 if (argsResult.Errors.Any() || argsResult.Value is null)
@@ -48,16 +48,16 @@ var dashboardOptions = new AspireDashboardOptions
 };
 
 var aspireDashboard = new AspireDashboard(dotnet, dashboardOptions, logger);
-aspireDashboard.DashboardStarted += url => logger.LogInformation("The Aspire Dashboard is ready at {Url}", url);
+aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
 
 if (!aspireDashboard.IsInstalled())
 {
-    logger.LogError("""
-                    Failed to locate the Aspire Dashboard installation.
+    logger.LogError($"""
+                     Failed to locate the Aspire Dashboard installation.
 
-                    Please make sure the Aspire workload is installed
-                    Run 'dotnet workload install aspire' to install it.
-                    """);
+                     Please make sure the Aspire workload is installed
+                     Run '{Bold("dotnet workload install aspire")}' to install it.
+                     """);
 
     return ReturnCodes.AspireInstallationError;
 }

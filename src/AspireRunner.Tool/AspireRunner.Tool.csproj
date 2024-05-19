@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Version>1.0.2</Version>
+        <Version>1.0.3</Version>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <RuntimeIdentifiers>win-x64;osx-x64;linux-x64</RuntimeIdentifiers>
@@ -37,4 +37,8 @@
     <ItemGroup>
       <ProjectReference Include="..\AspireRunner.Core\AspireRunner.Core.csproj" />
     </ItemGroup>
+
+    <PropertyGroup>
+        <NoWarn>$(NoWarn);CA2254</NoWarn>
+    </PropertyGroup>
 </Project>
