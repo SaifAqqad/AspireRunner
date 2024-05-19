@@ -4,7 +4,7 @@ A standalone runner for the .NET [Aspire Dashboard](https://learn.microsoft.com/
 data (traces, metrics, and logs) from any application.
 
 > [!NOTE]
-> Currently the runner requires both the .NET 8 SDK and the [aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=dotnet-cli%2Cunix) to
+> Currently, the runner requires both the .NET 8 SDK and the [aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=dotnet-cli%2Cunix) to
 > be installed.
 >
 >
