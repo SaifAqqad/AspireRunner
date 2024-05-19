@@ -8,6 +8,8 @@ public partial class AspireDashboard
 
     private const string DllName = "Aspire.Dashboard.dll";
 
+    private const string AspRuntimeName = "Microsoft.AspNetCore.App";
+
     private const string DataFolder = ".AspireRunner";
 
     private const string InstanceFile = "aspire-dashboard.pid";
