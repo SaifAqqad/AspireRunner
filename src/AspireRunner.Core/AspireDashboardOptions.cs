@@ -104,6 +104,16 @@ public sealed class RunnerOptions
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public SingleInstanceHandling SingleInstanceHandling { get; set; } = SingleInstanceHandling.WarnAndExit;
+
+    /// <summary>
+    /// Automatically download the dashboard if the workload is not found.
+    /// </summary>
+    public bool AutoDownload { get; set; }
+
+    /// <summary>
+    /// The version of the dotnet runtime to use when downloading/running the dashboard.
+    /// </summary>
+    public string? RuntimeVersion { get; set; }
 }
 
 public enum FrontendAuthMode

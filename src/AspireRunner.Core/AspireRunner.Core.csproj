@@ -33,6 +33,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0"/>
+        <PackageReference Include="NuGet.Protocol" Version="6.9.1" />
         <PackageReference Include="SemanticVersioning" Version="2.0.2"/>
     </ItemGroup>
 </Project>

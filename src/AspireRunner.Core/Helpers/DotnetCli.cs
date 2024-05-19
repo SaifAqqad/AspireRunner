@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace AspireRunner.Core;
+namespace AspireRunner.Core.Helpers;
 
 public partial class DotnetCli
 {
@@ -17,10 +17,10 @@ public partial class DotnetCli
     private DotnetCli() { }
 
     /// <summary>
-    /// Creates a new instance of the <see cref="AspireRunner.Core.DotnetCli"/> class.
+    /// Creates a new instance of the <see cref="DotnetCli"/> class.
     /// </summary>
     /// <returns>
-    /// A new instance of the <see cref="AspireRunner.Core.DotnetCli"/> class or null if the dotnet CLI wasn't found.
+    /// A new instance of the <see cref="DotnetCli"/> class or null if the dotnet CLI wasn't found.
     /// </returns>
     public static DotnetCli? TryCreate()
     {
@@ -176,6 +176,25 @@ public partial class DotnetCli
     }
 
     /// <summary>
+    /// Returns all installed runtimes.
+    /// </summary>
+    /// <returns>A tuple array containing the name and version of each installed runtime</returns>
+    public (string Runtime, string Version)[] GetInstalledRuntimes()
+    {
+        var runtimesOutput = Run("--list-runtimes");
+        if (string.IsNullOrWhiteSpace(runtimesOutput))
+        {
+            return [];
+        }
+
+        return runtimesOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => RuntimeOutputRegex().Match(s))
+            .Where(m => m.Success)
+            .Select(m => (Runtime: m.Groups[1].Value, Version: m.Groups[2].Value))
+            .ToArray();
+    }
+
+    /// <summary>
     /// Returns the path of the latest SDK installed.
     /// </summary>
     /// <returns>The path of the latest SDK installed or null if no SDK was found.</returns>
@@ -262,7 +281,6 @@ public partial class DotnetCli
 
         return paths;
     }
-
 
     /// <summary>
     /// Checks if the current process is running inside WSL.
