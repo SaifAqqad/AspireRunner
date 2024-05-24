@@ -14,15 +14,15 @@ public class NugetHelper(ILogger<NugetHelper> logger)
     private readonly SourceCacheContext _cache = new();
     private readonly SourceRepository _repository = Repository.Factory.GetCoreV3(RepoUrl);
 
-    public async Task<Version[]> GetPackageVersions(string packageName)
+    public async Task<Version[]> GetPackageVersionsAsync(string packageName)
     {
         var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
         var metadata = await resource.GetAllVersionsAsync(packageName, _cache, NullLogger.Instance, CancellationToken.None);
 
-        return metadata.Select(v => new Version(v.ToFullString(), true)).ToArray();
+        return metadata.Select(v => new Version(v.ToFullString(), true)).OrderDescending().ToArray();
     }
 
-    public async Task<bool> DownloadPackage(string packageName, Version version, string destinationPath)
+    public async Task<bool> DownloadPackageAsync(string packageName, Version version, string destinationPath)
     {
         using var packageStream = new MemoryStream();
         var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
