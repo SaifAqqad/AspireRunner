@@ -12,6 +12,8 @@ public partial class AspireDashboard
 
     private const string DataFolder = ".AspireRunner";
 
+    private const string DownloadFolder = "dashboard";
+
     private const string InstanceFile = "aspire-dashboard.pid";
 
     private const string LoginConsoleMessage = "Login to the dashboard at";
