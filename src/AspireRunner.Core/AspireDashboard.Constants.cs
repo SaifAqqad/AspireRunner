@@ -21,4 +21,6 @@ public partial class AspireDashboard
     private const string DashboardStartedConsoleMessage = "Now listening on:";
 
     private const int DefaultErrorLogDelay = 2000;
+
+    private static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
 }
