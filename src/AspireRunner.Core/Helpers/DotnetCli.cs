@@ -179,7 +179,7 @@ public partial class DotnetCli
     /// Returns all installed runtimes.
     /// </summary>
     /// <returns>A tuple array containing the name and version of each installed runtime</returns>
-    public (string Runtime, string Version)[] GetInstalledRuntimes()
+    public (string Name, Version Version)[] GetInstalledRuntimes()
     {
         var runtimesOutput = Run("--list-runtimes");
         if (string.IsNullOrWhiteSpace(runtimesOutput))
@@ -190,7 +190,7 @@ public partial class DotnetCli
         return runtimesOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => RuntimeOutputRegex().Match(s))
             .Where(m => m.Success)
-            .Select(m => (Runtime: m.Groups[1].Value, Version: m.Groups[2].Value))
+            .Select(m => (Name: m.Groups[1].Value, Version: new Version(m.Groups[2].Value)))
             .ToArray();
     }
 

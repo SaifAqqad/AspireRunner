@@ -113,6 +113,9 @@ public sealed class RunnerOptions
     /// <summary>
     /// The version of the dotnet runtime to use when downloading/running the dashboard.
     /// </summary>
+    /// <example>
+    /// When setting the runtime version to 8.0, the latest 8.x version of the dashboard will be downloaded/used.
+    /// </example>
     public string? RuntimeVersion { get; set; }
 }
 
