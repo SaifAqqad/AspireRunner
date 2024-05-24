@@ -63,7 +63,7 @@ public partial class AspireDashboard
         }
 
         var installedRuntimes = _dotnetCli.GetInstalledRuntimes()
-            .Where(r => r.Name is AspRuntimeName)
+            .Where(r => r.Name is AspRuntimeName && r.Version >= MinimumRuntimeVersion)
             .Select(r => r.Version)
             .ToArray();
 
@@ -214,9 +214,9 @@ public partial class AspireDashboard
 
             var versionToDownload = (
                 preferredVersion != null
-                    ? availableVersions.Where(v => v.IsCompatibleWith(preferredVersion)).Max()
+                    ? availableVersions.Where(preferredVersion.IsCompatibleWith).Max()
                     : availableVersions.Where(v => v.Major == latestRuntimeVersion!.Major).Max()
-            ) ?? availableVersions.First(v => !v.IsPreRelease);
+            ) ?? availableVersions.First(v => !v.IsPreRelease); // Fallback to the latest non-preview version
 
             return await _nugetHelper.DownloadPackageAsync(_nugetPackageName, versionToDownload, Path.Combine(_runnerFolder, DownloadFolder, versionToDownload.ToString()));
         }
@@ -241,7 +241,7 @@ public partial class AspireDashboard
                 : installedVersions.Max();
 
             var latestAvailableVersion = preferredVersion != null
-                ? availableVersions.Where(v => v.IsCompatibleWith(preferredVersion)).Max()
+                ? availableVersions.Where(preferredVersion.IsCompatibleWith).Max()
                 : availableVersions.Where(v => v.Major == latestInstalledVersion!.Major).Max();
 
             if (latestAvailableVersion > latestInstalledVersion)
