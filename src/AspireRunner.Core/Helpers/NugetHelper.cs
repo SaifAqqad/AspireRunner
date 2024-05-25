@@ -24,38 +24,57 @@ public class NugetHelper(ILogger<NugetHelper> logger)
 
     public async Task<bool> DownloadPackageAsync(string packageName, Version version, string destinationPath)
     {
-        using var packageStream = new MemoryStream();
-        var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
-
-        logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", packageName, version, destinationPath);
-
-        var success = await resource.CopyNupkgToStreamAsync(
-            packageName,
-            new NuGetVersion(version.ToString()),
-            packageStream,
-            _cache,
-            NullLogger.Instance,
-            CancellationToken.None
-        );
-
-        if (!success)
+        try
         {
+            using var packageStream = new MemoryStream();
+            var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
+
+            logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", packageName, version, destinationPath);
+
+            var success = await resource.CopyNupkgToStreamAsync(
+                packageName,
+                new NuGetVersion(version.ToString()),
+                packageStream,
+                _cache,
+                NullLogger.Instance,
+                CancellationToken.None
+            );
+
+            if (!success)
+            {
+                return false;
+            }
+
+            using var packageReader = new PackageArchiveReader(packageStream);
+            await packageReader.CopyFilesAsync(destinationPath, packageReader.GetFiles(), ExtractFile, NullLogger.Instance, CancellationToken.None);
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            logger.LogError("Failed to download {PackageName} {Version} to {DestinationPath}, {Exception}", packageName, version, destinationPath, e.Message);
             return false;
         }
-
-        using var packageReader = new PackageArchiveReader(packageStream);
-        await packageReader.CopyFilesAsync(destinationPath, packageReader.GetFiles(), ExtractFile, NullLogger.Instance, CancellationToken.None);
-
-        return true;
     }
 
     private string ExtractFile(string sourcefile, string targetpath, Stream filestream)
     {
-        logger.LogTrace("Extracting {SourceFile} to {TargetPath}", sourcefile, targetpath);
+        try
+        {
+            logger.LogTrace("Extracting {SourceFile} to {TargetPath}", sourcefile, targetpath);
 
-        using var file = File.Create(targetpath);
-        filestream.CopyTo(file);
+            // Ensure the directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(targetpath)!);
 
-        return targetpath;
+            using var file = File.Create(targetpath);
+            filestream.CopyTo(file);
+
+            return targetpath;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("Failed to extract {SourceFile} to {TargetPath}, {Exception}", sourcefile, targetpath, ex.Message);
+            throw;
+        }
     }
 }
