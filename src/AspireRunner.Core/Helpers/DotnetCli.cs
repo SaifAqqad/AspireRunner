@@ -75,7 +75,7 @@ public partial class DotnetCli
     /// <exception cref="InvalidOperationException">The dotnet CLI process failed to start.</exception>
     public Process Run(string[] arguments, string? workingDirectory = null, IDictionary<string, string>? environement = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
     {
-        var processStartInfo = new ProcessStartInfo(Path.Combine(CliPath, Executable), arguments)
+        var processStartInfo = new ProcessStartInfo(Path.Combine(CliPath, Executable))
         {
             CreateNoWindow = true,
             UseShellExecute = false,
@@ -84,6 +84,11 @@ public partial class DotnetCli
             WorkingDirectory = workingDirectory,
             WindowStyle = ProcessWindowStyle.Hidden
         };
+
+        foreach (var argument in arguments)
+        {
+            processStartInfo.ArgumentList.Add(argument);
+        }
 
         if (environement != null)
         {
@@ -162,7 +167,7 @@ public partial class DotnetCli
     public string[] GetInstalledWorkloads()
     {
         var workloadsOutput = Run("workload list");
-        var workloadsMatch = TableContentRegex().Match(workloadsOutput);
+        var workloadsMatch = TableContentRegex.Match(workloadsOutput);
         if (!workloadsMatch.Success)
         {
             return [];
@@ -170,7 +175,7 @@ public partial class DotnetCli
 
         return workloadsMatch.Value
             .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(row => TableColumnSeperatorRegex().Split(row, 3)[0])
+            .Select(row => TableColumnSeperatorRegex.Split(row, 3)[0])
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .ToArray();
     }
@@ -188,7 +193,7 @@ public partial class DotnetCli
         }
 
         return runtimesOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => RuntimeOutputRegex().Match(s))
+            .Select(s => RuntimeOutputRegex.Match(s))
             .Where(m => m.Success)
             .Select(m => (Name: m.Groups[1].Value, Version: new Version(m.Groups[2].Value)))
             .ToArray();
@@ -202,7 +207,7 @@ public partial class DotnetCli
     {
         var sdksOutput = Run("--list-sdks");
         var sdks = sdksOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => SdkOutputRegex().Match(s))
+            .Select(s => SdkOutputRegex.Match(s))
             .Where(m => m.Success)
             .Select(m => (Version: m.Groups[1].Value, Path: m.Groups[2].Value))
             .ToArray();
