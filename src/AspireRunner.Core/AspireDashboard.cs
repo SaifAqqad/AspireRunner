@@ -348,7 +348,7 @@ public partial class AspireDashboard
             return;
         }
 
-        if (LaunchUrlRegex().Match(output) is { Success: true } match)
+        if (LaunchUrlRegex.Match(output) is { Success: true } match)
         {
             var url = match.Groups["url"].Value;
             if (_options.Runner.LaunchBrowser)

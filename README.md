@@ -1,28 +1,28 @@
 ﻿# AspireRunner
 
-A standalone runner for the .NET [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone) which can be used to display OpenTelemetry
-data (traces, metrics, and logs) from any application.
+A standalone runner for the .NET [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone) which can display OpenTelemetry data (traces,
+metrics, and logs) from any application.
+
+The runner can be used as a [dotnet tool](./src/AspireRunner.Tool/README.md) or as part of an [ASP.NET Core application](./src/AspireRunner.AspNetCore/README.md), it will automatically download the dashboard if it's not installed, and will run and manage the dashboard process.
 
 > [!NOTE]
-> Currently, the runner requires both the .NET 8 SDK and the [aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=dotnet-cli%2Cunix) to
-> be installed.
+> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=windows&pivots=visual-studio), if it's installed.
+
+> [!IMPORTANT]
+> While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.
 >
->
-> Eventually (wip), it'll be able to automatically fetch and install the dashboard and therefore would only require the .NET runtime.
+> Meaning that the runner can be used as part of a .NET 6 application, but you still need to have the .NET 8/9 runtime installed to run the dashboard.
+
 
 ## [AspireRunner.Tool](./src/AspireRunner.Tool/README.md)
 
-Provides an easy to use dotnet tool for running the Dashboard
+Provides an easy to use dotnet tool for downloading and running the Dashboard
 
 [![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.Tool?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.Tool)](https://www.nuget.org/packages/AspireRunner.Tool)
 
 ### Installation
 
 ```bash
-# Install the aspire workload (skip if already installed)
-dotnet workload install aspire
-
-# Install the AspireRunner tool
 dotnet tool install -g AspireRunner.Tool
 ```
 
