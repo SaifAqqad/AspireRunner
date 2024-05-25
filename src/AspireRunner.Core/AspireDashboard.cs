@@ -160,7 +160,7 @@ public partial class AspireDashboard
         }
 
         return (
-            Installed: Directory.EnumerateDirectories(downloadsFolder, "v*").Any(),
+            Installed: Directory.EnumerateDirectories(downloadsFolder, "*.*").Any(),
             Workload: false
         );
     }
@@ -292,7 +292,7 @@ public partial class AspireDashboard
 
             if (Version.TryParse(_options.Runner.RuntimeVersion, out var preferredVersion))
             {
-                var preferredDashboard = installedVersions.Where(v => v.Version.IsCompatibleWith(preferredVersion)).Max();
+                var preferredDashboard = installedVersions.FirstOrDefault(v => v.Version.IsCompatibleWith(preferredVersion));
                 if (preferredDashboard.Path != null)
                 {
                     return Path.Combine(preferredDashboard.Path, "tools");
