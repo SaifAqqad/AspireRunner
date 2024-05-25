@@ -4,15 +4,11 @@ namespace AspireRunner.Core.Helpers;
 
 public partial class DotnetCli
 {
-    [GeneratedRegex(@"([\d\.]+)\s+(?:\[(.+)\])?", RegexOptions.Compiled)]
-    private static partial Regex SdkOutputRegex();
+    private static readonly Regex SdkOutputRegex = new(@"([\d\.]+)\s+(?:\[(.+)\])?", RegexOptions.Compiled);
 
-    [GeneratedRegex(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled)]
-    private static partial Regex RuntimeOutputRegex();
+    private static readonly Regex RuntimeOutputRegex = new(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled);
 
-    [GeneratedRegex(@"-+\r?\n([\w\W]+?)\r?\n\r?\n", RegexOptions.Compiled)]
-    private static partial Regex TableContentRegex();
+    private static readonly Regex TableContentRegex = new(@"-+\r?\n([\w\W]+?)\r?\n\r?\n", RegexOptions.Compiled);
 
-    [GeneratedRegex(@"\s{2,}", RegexOptions.Compiled)]
-    private static partial Regex TableColumnSeperatorRegex();
+    private static readonly Regex TableColumnSeperatorRegex = new(@"\s{2,}", RegexOptions.Compiled);
 }
