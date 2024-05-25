@@ -17,6 +17,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspireRunner.Core", "src\AspireRunner.Core\AspireRunner.Core.csproj", "{FAEF0A1C-A38B-4A70-871D-6AF6F932C2E7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspireRunner.AspNetCore", "src\AspireRunner.AspNetCore\AspireRunner.AspNetCore.csproj", "{2FF7B596-0A8E-4B72-AB81-E3EA82919BDD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{10DF5A07-9069-4548-B9C6-35FCCECB6C3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApiExample", "Examples\WebApiExample\WebApiExample.csproj", "{8E2B68DB-4579-461B-A44E-AD8EE6BDB3E5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,9 +40,19 @@ Global
 		{FAEF0A1C-A38B-4A70-871D-6AF6F932C2E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FAEF0A1C-A38B-4A70-871D-6AF6F932C2E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FAEF0A1C-A38B-4A70-871D-6AF6F932C2E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FF7B596-0A8E-4B72-AB81-E3EA82919BDD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FF7B596-0A8E-4B72-AB81-E3EA82919BDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FF7B596-0A8E-4B72-AB81-E3EA82919BDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FF7B596-0A8E-4B72-AB81-E3EA82919BDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E2B68DB-4579-461B-A44E-AD8EE6BDB3E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E2B68DB-4579-461B-A44E-AD8EE6BDB3E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E2B68DB-4579-461B-A44E-AD8EE6BDB3E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E2B68DB-4579-461B-A44E-AD8EE6BDB3E5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FBB8955B-4B32-44BD-8DD1-8EB6C25844BA} = {A79C9E77-492E-4AB4-9E48-C011E6D4F745}
 		{FAEF0A1C-A38B-4A70-871D-6AF6F932C2E7} = {A79C9E77-492E-4AB4-9E48-C011E6D4F745}
+		{2FF7B596-0A8E-4B72-AB81-E3EA82919BDD} = {A79C9E77-492E-4AB4-9E48-C011E6D4F745}
+		{8E2B68DB-4579-461B-A44E-AD8EE6BDB3E5} = {10DF5A07-9069-4548-B9C6-35FCCECB6C3F}
 	EndGlobalSection
 EndGlobal

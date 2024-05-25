@@ -339,7 +339,7 @@ public partial class AspireDashboard
     {
         if (_options.Runner.PipeOutput)
         {
-            _logger.LogInformation("{AspireOutput}", output);
+            _logger.LogInformation(output);
         }
 
         if (_options.Frontend.AuthMode is FrontendAuthMode.BrowserToken && output.Contains(DashboardStartedConsoleMessage, StringComparison.OrdinalIgnoreCase))
