@@ -4,6 +4,7 @@ using AspireRunner.Tool;
 using CommandLine;
 using CommandLine.Text;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 var logger = new ConsoleLogger<AspireDashboard>();
 
@@ -22,6 +23,10 @@ if (argsResult.Errors.Any() || argsResult.Value is null)
 }
 
 var arguments = argsResult.Value;
+logger.Verbose = arguments.Verbose;
+logger.LogDebug("Arguments: {@Arguments}", arguments);
+
+var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper> { Verbose = arguments.Verbose });
 var dotnet = DotnetCli.TryCreate();
 if (dotnet is null)
 {
@@ -46,27 +51,33 @@ var dashboardOptions = new AspireDashboardOptions
     Runner = new RunnerOptions
     {
         PipeOutput = false,
+        AutoDownload = arguments.AutoDownload,
         LaunchBrowser = arguments.LaunchBrowser,
+        RuntimeVersion = arguments.RuntimeVersion,
         SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
     }
 };
 
-var aspireDashboard = new AspireDashboard(dotnet, dashboardOptions, logger);
+logger.LogDebug("Dashboard options: {@DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
+
+var aspireDashboard = new AspireDashboard(dotnet, nugetHelper, dashboardOptions, logger);
 aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
 
-if (!aspireDashboard.IsInstalled())
+var (isInstalled, _) = aspireDashboard.IsInstalled();
+if (!isInstalled && !arguments.AutoDownload)
 {
     logger.LogError($"""
-                     Failed to locate the Aspire Dashboard installation.
+                     The Aspire Dashboard is not installed.
 
-                     Please make sure the Aspire workload is installed
-                     Run '{Bold("dotnet workload install aspire")}' to install it.
+                     Pass the option {Bold("--auto-download")} to automatically download and install the Aspire Dashboard.
+                     Alternatively, Run '{Bold("dotnet workload install aspire")}' to install the aspire workload through the dotnet CLI.
                      """);
 
     return ReturnCodes.AspireInstallationError;
 }
 
-aspireDashboard.Start();
-aspireDashboard.WaitForExit();
+await aspireDashboard.StartAsync();
+await aspireDashboard.WaitForExitAsync();
 
+logger.LogDebug("Aspire Dashboard exited, {HasErrors}", aspireDashboard.HasErrors);
 return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
