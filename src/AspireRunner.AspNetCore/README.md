@@ -4,7 +4,7 @@ A library for running the Aspire Dashboard alongside ASP.NET Core apps (as a bac
 
 The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any application, although this is intended to be used for local development only.
 
-[![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.AspNetCore?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.AspNetCore)](https://www.nuget.org/packages/AspireRunner.AspNetCore)
+[![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.AspNetCore?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.AspNetCore)](https://www.nuget.org/packages/AspireRunner.Tool)
 
 ### Example usage
 
@@ -40,4 +40,4 @@ var app = builder.Build();
 > [!IMPORTANT]
 > While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.
 >
-> Meaning that the runner can be used as part of a .NET 6 application, but you still need to have the .NET 8/9 runtime installed to run the dashboard.
+> Meaning that the runner can be used as part of a .NET 6 application, but you'll still need the .NET 8/9 runtime to run the dashboard.
