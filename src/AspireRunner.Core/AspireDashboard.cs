@@ -55,7 +55,7 @@ public partial class AspireDashboard
         _nugetPackageName = $"{SdkName}.{RuntimeInformation.RuntimeIdentifier}";
     }
 
-    public async ValueTask Start()
+    public async ValueTask StartAsync()
     {
         if (_process != null)
         {
@@ -67,6 +67,7 @@ public partial class AspireDashboard
             .Select(r => r.Version)
             .ToArray();
 
+        _logger.LogTrace("Installed runtimes: {InstalledRuntimes}", string.Join(", ", installedRuntimes.Select(v => v.ToString())));
         if (installedRuntimes.Length == 0)
         {
             throw new ApplicationException($"The runner requires the '{AspRuntimeName}' runtime.");
@@ -88,13 +89,13 @@ public partial class AspireDashboard
             }
 
             _logger.LogWarning("The Aspire Dashboard is not installed, downloading the latest compatible version...");
-            var downloadSuccessful = await TryDownload(preferredVersion, installedRuntimes);
+            var (downloadSuccessful, downloadedVersion) = await TryDownload(preferredVersion, installedRuntimes);
             if (!downloadSuccessful)
             {
                 throw new ApplicationException("Failed to download the Aspire Dashboard.");
             }
 
-            _logger.LogInformation("Successfully downloaded the Aspire Dashboard.");
+            _logger.LogInformation("Successfully downloaded the Aspire Dashboard (version {Version}).", downloadedVersion);
         }
         else if (!isWorkload && _options.Runner.AutoDownload)
         {
@@ -128,6 +129,7 @@ public partial class AspireDashboard
             throw new ApplicationException("Failed to locate the Aspire Dashboard installation.");
         }
 
+        _logger.LogTrace("Aspire Dashboard installation path: {AspirePath}", aspirePath);
         _logger.LogInformation("Starting the Aspire Dashboard...");
 
         try
@@ -147,6 +149,7 @@ public partial class AspireDashboard
     {
         if (_dotnetCli is { SdkPath: not null } && _dotnetCli.GetInstalledWorkloads().Contains(WorkloadId))
         {
+            _logger.LogTrace("Using the Aspire Dashboard workload.");
             return (true, true);
         }
 
@@ -162,7 +165,7 @@ public partial class AspireDashboard
         );
     }
 
-    public ValueTask Stop()
+    public ValueTask StopAsync()
     {
         if (_process == null)
         {
@@ -202,7 +205,7 @@ public partial class AspireDashboard
         return Task.WhenAny(tcs.Task, Task.Delay(-1, cancellationToken));
     }
 
-    private async Task<bool> TryDownload(Version? preferredVersion, Version[] installedRuntimes)
+    private async Task<(bool Downloaded, Version? Version)> TryDownload(Version? preferredVersion, Version[] installedRuntimes)
     {
         try
         {
@@ -218,11 +221,12 @@ public partial class AspireDashboard
                     : availableVersions.Where(v => v.Major == latestRuntimeVersion!.Major).Max()
             ) ?? availableVersions.First(v => !v.IsPreRelease); // Fallback to the latest non-preview version
 
-            return await _nugetHelper.DownloadPackageAsync(_nugetPackageName, versionToDownload, Path.Combine(_runnerFolder, DownloadFolder, versionToDownload.ToString()));
+            var downloadSucceesful = await _nugetHelper.DownloadPackageAsync(_nugetPackageName, versionToDownload, Path.Combine(_runnerFolder, DownloadFolder, versionToDownload.ToString()));
+            return (downloadSucceesful, versionToDownload);
         }
         catch
         {
-            return false;
+            return (false, null);
         }
     }
 
