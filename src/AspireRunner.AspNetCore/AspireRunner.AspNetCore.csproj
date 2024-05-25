@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Version>1.1.1</Version>
+        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+        <LangVersion>latest</LangVersion>
+
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <RootNamespace>AspireRunner.AspNetCore</RootNamespace>
+
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <IncludeSymbols>true</IncludeSymbols>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>portable</DebugType>
+        <PackageOutputPath>../../dist</PackageOutputPath>
+
+        <Authors>SaifAqqad</Authors>
+        <Description>A runner for the dotnet Aspire Dashboard</Description>
+        <PackageProjectUrl>https://github.com/SaifAqqad/AspireRunner</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/SaifAqqad/AspireRunner.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>aspire aspire-dashboard opentelemetry otel</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="./"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\AspireRunner.Core\AspireRunner.Core.csproj" />
+    </ItemGroup>
+
+</Project>

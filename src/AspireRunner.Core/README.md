@@ -8,10 +8,10 @@ The runner can be used as a [dotnet tool](https://www.nuget.org/packages/AspireR
 The dashboard can be used to display OpenTelemetry data (traces, metrics and logs) from any
 application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview))
 
-
 > [!NOTE]
-> Currently, the runner requires both the .NET 8 SDK and the [aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=dotnet-cli%2Cunix) to
-> be installed.
-> <br>
+> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=windows&pivots=visual-studio), if it's installed.
+
+> [!IMPORTANT]
+> While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.
 >
-> Eventually (wip), it'll be able to automatically fetch and install the dashboard and therefore would only require the .NET runtime.
+> Meaning that the runner can be used as part of a .NET 6 application, but you still need to have the .NET 8/9 runtime installed to run the dashboard.
