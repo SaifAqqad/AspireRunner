@@ -52,7 +52,7 @@ public partial class AspireDashboard
             Directory.CreateDirectory(_runnerFolder);
         }
 
-        _nugetPackageName = $"{SdkName}.{RuntimeInformation.RuntimeIdentifier}";
+        _nugetPackageName = $"{SdkName}.{RuntimeIdentification.Rid}";
     }
 
     public async ValueTask StartAsync()
