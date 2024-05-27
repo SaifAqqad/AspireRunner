@@ -3,7 +3,6 @@ using AspireRunner.Core.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace AspireRunner.Core;
@@ -123,18 +122,20 @@ public partial class AspireDashboard
             }
         }
 
-        var aspirePath = GetInstallationPath(isWorkload);
-        if (aspirePath == null)
+        var installationInfo = GetInstallationInfo(isWorkload);
+        if (installationInfo == null)
         {
             throw new ApplicationException("Failed to locate the Aspire Dashboard installation.");
         }
 
-        _logger.LogTrace("Aspire Dashboard installation path: {AspirePath}", aspirePath);
-        _logger.LogInformation("Starting the Aspire Dashboard...");
+        var (version, path) = installationInfo.Value;
+        _logger.LogTrace("Aspire Dashboard installation path: {AspirePath}, Workload = {Workload}", path, isWorkload);
+        _logger.LogInformation("Found Version {Version}", version);
 
         try
         {
-            _process = _dotnetCli.Run(["exec", Path.Combine(aspirePath, DllName)], aspirePath, _options.ToEnvironmentVariables(), OutputHandler, ErrorHandler);
+            _logger.LogInformation("Starting the Aspire Dashboard...");
+            _process = _dotnetCli.Run(["exec", Path.Combine(path, DllName)], path, _options.ToEnvironmentVariables(), OutputHandler, ErrorHandler);
         }
         catch (Exception e)
         {
@@ -186,23 +187,16 @@ public partial class AspireDashboard
         return ValueTask.CompletedTask;
     }
 
-    public void WaitForExit()
-    {
-        _process?.WaitForExit();
-    }
+    public void WaitForExit() => _process?.WaitForExit();
 
-    public Task WaitForExitAsync(CancellationToken cancellationToken = default)
+    public async ValueTask WaitForExitAsync(CancellationToken cancellationToken = default)
     {
         if (_process == null)
         {
-            return Task.CompletedTask;
+            return;
         }
 
-        var tcs = new TaskCompletionSource();
-        _process.EnableRaisingEvents = true;
-        _process.Exited += (_, _) => tcs.SetResult();
-
-        return Task.WhenAny(tcs.Task, Task.Delay(-1, cancellationToken));
+        await _process.WaitForExitAsync(cancellationToken);
     }
 
     private async Task<(bool Downloaded, Version? Version)> TryDownload(Version? preferredVersion, Version[] installedRuntimes)
@@ -230,7 +224,7 @@ public partial class AspireDashboard
         }
     }
 
-    private async ValueTask TryUpdate(Version? preferredVersion)
+    private async Task TryUpdate(Version? preferredVersion)
     {
         try
         {
@@ -271,7 +265,7 @@ public partial class AspireDashboard
         }
     }
 
-    private string? GetInstallationPath(bool workload)
+    private (Version Version, string Path)? GetInstallationInfo(bool workload)
     {
         try
         {
@@ -295,16 +289,15 @@ public partial class AspireDashboard
                 var preferredDashboard = installedVersions.FirstOrDefault(v => v.Version.IsCompatibleWith(preferredVersion));
                 if (preferredDashboard.Path != null)
                 {
-                    return Path.Combine(preferredDashboard.Path, "tools");
+                    return (preferredDashboard.Version, Path.Combine(preferredDashboard.Path, "tools"));
                 }
             }
 
             // If a version is already installed, we probably already have a compatible runtime (no need to check)
-            var newestVersionPath = installedVersions
-                .MaxBy(d => d.Version)
-                .Path;
+            var newestVersion = installedVersions
+                .MaxBy(d => d.Version);
 
-            return newestVersionPath == null ? null : Path.Combine(newestVersionPath, "tools");
+            return newestVersion.Path == null ? null : (newestVersion.Version, Path.Combine(newestVersion.Path, "tools"));
         }
         catch
         {
