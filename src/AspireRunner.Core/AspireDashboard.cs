@@ -54,6 +54,12 @@ public partial class AspireDashboard
         _nugetPackageName = $"{SdkName}.{RuntimeIdentification.Rid}";
     }
 
+    /// <summary>
+    /// Starts the Aspire Dashboard process.
+    /// </summary>
+    /// <exception cref="ApplicationException">
+    /// Thrown when the Aspire Dashboard is already running.
+    /// </exception>
     public async ValueTask StartAsync()
     {
         if (_process != null)
@@ -88,7 +94,7 @@ public partial class AspireDashboard
             }
 
             _logger.LogWarning("The Aspire Dashboard is not installed, downloading the latest compatible version...");
-            var (downloadSuccessful, downloadedVersion) = await TryDownload(preferredVersion, installedRuntimes);
+            var (downloadSuccessful, downloadedVersion) = await TryDownloadAsync(preferredVersion, installedRuntimes);
             if (!downloadSuccessful)
             {
                 throw new ApplicationException("Failed to download the Aspire Dashboard.");
@@ -99,7 +105,7 @@ public partial class AspireDashboard
         else if (!isWorkload && _options.Runner.AutoDownload)
         {
             // We are using the runner-managed dashboards, so we can try to update
-            await TryUpdate(preferredVersion);
+            await TryUpdateAsync(preferredVersion);
         }
 
         switch (_options.Runner.SingleInstanceHandling)
@@ -146,6 +152,16 @@ public partial class AspireDashboard
         PersistProcessId();
     }
 
+    /// <summary>
+    /// Checks if the Aspire Dashboard is installed.
+    /// </summary>
+    /// <returns>
+    /// A tuple containing two boolean values:
+    /// <list type="bullet">
+    ///     <item>Installed: Whether the Aspire Dashboard is installed.</item>
+    ///     <item>Workload: Whether it's installed as a workload (rather than downloaded by the runner).</item>
+    /// </list>
+    /// </returns>
     public (bool Installed, bool Workload) IsInstalled()
     {
         if (_dotnetCli is { SdkPath: not null } && _dotnetCli.GetInstalledWorkloads().Contains(WorkloadId))
@@ -166,11 +182,14 @@ public partial class AspireDashboard
         );
     }
 
-    public ValueTask StopAsync()
+    /// <summary>
+    /// Stops the Aspire Dashboard process.
+    /// </summary>
+    public void Stop()
     {
         if (_process == null)
         {
-            return ValueTask.CompletedTask;
+            return;
         }
 
         try
@@ -184,14 +203,34 @@ public partial class AspireDashboard
         }
 
         _process = null;
-        return ValueTask.CompletedTask;
     }
 
-    public void WaitForExit() => _process?.WaitForExit();
-
-    public async ValueTask WaitForExitAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Stops the Aspire Dashboard process asynchronously (using Task.Run).
+    /// </summary>
+    public async ValueTask StopAsync()
     {
         if (_process == null)
+        {
+            return;
+        }
+
+        await Task.Run(Stop);
+    }
+
+    /// <summary>
+    /// Waits for the Aspire Dashboard process to exit.
+    /// </summary>
+    public void WaitForExit() => _process?.WaitForExit();
+
+
+    /// <summary>
+    /// Waits for the Aspire Dashboard process to exit asynchronously or until the cancellation token is triggered.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
+    public async ValueTask WaitForExitAsync(CancellationToken cancellationToken = default)
+    {
+        if (_process == null || cancellationToken.IsCancellationRequested)
         {
             return;
         }
@@ -199,7 +238,7 @@ public partial class AspireDashboard
         await _process.WaitForExitAsync(cancellationToken);
     }
 
-    private async Task<(bool Downloaded, Version? Version)> TryDownload(Version? preferredVersion, Version[] installedRuntimes)
+    private async Task<(bool Downloaded, Version? Version)> TryDownloadAsync(Version? preferredVersion, Version[] installedRuntimes)
     {
         try
         {
@@ -213,7 +252,7 @@ public partial class AspireDashboard
                 preferredVersion != null
                     ? availableVersions.Where(preferredVersion.IsCompatibleWith).Max()
                     : availableVersions.Where(v => v.Major == latestRuntimeVersion!.Major).Max()
-            ) ?? availableVersions.First(v => !v.IsPreRelease); // Fallback to the latest non-preview version
+            ) ?? availableVersions.First(); // Fallback to the latest version
 
             var downloadSucceesful = await _nugetHelper.DownloadPackageAsync(_nugetPackageName, versionToDownload, Path.Combine(_runnerFolder, DownloadFolder, versionToDownload.ToString()));
             return (downloadSucceesful, versionToDownload);
@@ -224,7 +263,7 @@ public partial class AspireDashboard
         }
     }
 
-    private async Task TryUpdate(Version? preferredVersion)
+    private async Task TryUpdateAsync(Version? preferredVersion)
     {
         try
         {

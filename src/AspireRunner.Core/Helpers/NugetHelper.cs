@@ -19,7 +19,11 @@ public class NugetHelper(ILogger<NugetHelper> logger)
         var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
         var metadata = await resource.GetAllVersionsAsync(packageName, _cache, NullLogger.Instance, CancellationToken.None);
 
-        return metadata.Select(v => new Version(v.ToFullString(), true)).OrderByDescending(v => v).ToArray();
+        return metadata
+            .Select(v => new Version(v.ToFullString(), true))
+            .Where(v => !v.IsPreRelease)
+            .OrderByDescending(v => v)
+            .ToArray();
     }
 
     public async Task<bool> DownloadPackageAsync(string packageName, Version version, string destinationPath)

@@ -46,7 +46,7 @@ public partial class DotnetCli
     /// <param name="arguments">The arguments to pass to the dotnet CLI.</param>
     /// <returns>The full output of the dotnet CLI.</returns>
     /// <exception cref="InvalidOperationException">The dotnet CLI process failed to start.</exception>
-    public string Run(string arguments)
+    public string RunAndGet(string arguments)
     {
         var process = Process.Start(new ProcessStartInfo(Path.Combine(CliPath, Executable), arguments)
         {
@@ -165,7 +165,7 @@ public partial class DotnetCli
     /// <returns>An array containing all installed workloads.</returns>
     public string[] GetInstalledWorkloads()
     {
-        var workloadsOutput = Run("workload list");
+        var workloadsOutput = RunAndGet("workload list");
         var workloadsMatch = TableContentRegex.Match(workloadsOutput);
         if (!workloadsMatch.Success)
         {
@@ -185,7 +185,7 @@ public partial class DotnetCli
     /// <returns>A tuple array containing the name and version of each installed runtime</returns>
     public (string Name, Version Version)[] GetInstalledRuntimes()
     {
-        var runtimesOutput = Run("--list-runtimes");
+        var runtimesOutput = RunAndGet("--list-runtimes");
         if (string.IsNullOrWhiteSpace(runtimesOutput))
         {
             return [];
@@ -204,7 +204,7 @@ public partial class DotnetCli
     /// <returns>The path of the latest SDK installed or null if no SDK was found.</returns>
     private string? GetSdkPath()
     {
-        var sdksOutput = Run("--list-sdks");
+        var sdksOutput = RunAndGet("--list-sdks");
         var sdks = sdksOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => SdkOutputRegex.Match(s))
             .Where(m => m.Success)
