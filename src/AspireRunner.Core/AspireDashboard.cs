@@ -64,7 +64,7 @@ public partial class AspireDashboard
     {
         if (_process != null)
         {
-            throw new ApplicationException("The Aspire Dashboard is already running.");
+            throw new ApplicationException("The Aspire Dashboard is already running");
         }
 
         var installedRuntimes = _dotnetCli.GetInstalledRuntimes()
@@ -75,13 +75,13 @@ public partial class AspireDashboard
         _logger.LogTrace("Installed runtimes: {InstalledRuntimes}", string.Join(", ", installedRuntimes.Select(v => v.ToString())));
         if (installedRuntimes.Length == 0)
         {
-            throw new ApplicationException($"The runner requires the '{AspRuntimeName}' runtime.");
+            throw new ApplicationException($"The runner requires the '{AspRuntimeName}' runtime");
         }
 
         var preferredVersion = Version.TryParse(_options.Runner.RuntimeVersion, out var rv) ? rv : null;
         if (preferredVersion != null && !installedRuntimes.Any(v => v.IsCompatibleWith(preferredVersion)))
         {
-            _logger.LogWarning("The specified runtime version {RuntimeVersion} is not installed, falling back to the latest installed version.", preferredVersion);
+            _logger.LogWarning("The specified runtime version {RuntimeVersion} is not installed, falling back to the latest installed version", preferredVersion);
             preferredVersion = null;
         }
 
@@ -90,17 +90,17 @@ public partial class AspireDashboard
         {
             if (!_options.Runner.AutoDownload)
             {
-                throw new ApplicationException("The Aspire Dashboard is not installed.");
+                throw new ApplicationException("The Aspire Dashboard is not installed");
             }
 
             _logger.LogWarning("The Aspire Dashboard is not installed, downloading the latest compatible version...");
             var (downloadSuccessful, downloadedVersion) = await TryDownloadAsync(preferredVersion, installedRuntimes);
             if (!downloadSuccessful)
             {
-                throw new ApplicationException("Failed to download the Aspire Dashboard.");
+                throw new ApplicationException("Failed to download the Aspire Dashboard");
             }
 
-            _logger.LogInformation("Successfully downloaded the Aspire Dashboard (version {Version}).", downloadedVersion);
+            _logger.LogInformation("Successfully downloaded the Aspire Dashboard (version {Version})", downloadedVersion);
         }
         else if (!isWorkload && _options.Runner.AutoDownload)
         {
@@ -131,21 +131,20 @@ public partial class AspireDashboard
         var installationInfo = GetInstallationInfo(isWorkload);
         if (installationInfo == null)
         {
-            throw new ApplicationException("Failed to locate the Aspire Dashboard installation.");
+            throw new ApplicationException("Failed to locate the Aspire Dashboard installation path");
         }
 
         var (version, path) = installationInfo.Value;
         _logger.LogTrace("Aspire Dashboard installation path: {AspirePath}, Workload = {Workload}", path, isWorkload);
-        _logger.LogInformation("Found Version {Version}", version);
 
         try
         {
-            _logger.LogInformation("Starting the Aspire Dashboard...");
+            _logger.LogInformation("Starting Aspire Dashboard {Version}", version);
             _process = _dotnetCli.Run(["exec", Path.Combine(path, DllName)], path, _options.ToEnvironmentVariables(), OutputHandler, ErrorHandler);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to start the Aspire Dashboard.");
+            _logger.LogError(e, "Failed to start the Aspire Dashboard");
             return;
         }
 
@@ -166,7 +165,7 @@ public partial class AspireDashboard
     {
         if (_dotnetCli is { SdkPath: not null } && _dotnetCli.GetInstalledWorkloads().Contains(WorkloadId))
         {
-            _logger.LogTrace("Using the Aspire Dashboard workload.");
+            _logger.LogTrace("Using the Aspire Dashboard workload");
             return (true, true);
         }
 
@@ -199,7 +198,7 @@ public partial class AspireDashboard
         }
         catch (InvalidOperationException)
         {
-            _logger.LogWarning("The Aspire Dashboard has already been stopped.");
+            _logger.LogWarning("The Aspire Dashboard has already been stopped");
         }
 
         _process = null;
@@ -293,14 +292,14 @@ public partial class AspireDashboard
                 }
                 else
                 {
-                    _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version.");
+                    _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version");
                     Directory.Delete(newVersionFolder, true);
                 }
             }
         }
         catch
         {
-            _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version.");
+            _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version");
         }
     }
 
@@ -391,7 +390,7 @@ public partial class AspireDashboard
                 }
                 catch
                 {
-                    _logger.LogWarning("Failed to launch the browser.");
+                    _logger.LogWarning("Failed to launch the browser");
                 }
             }
 
