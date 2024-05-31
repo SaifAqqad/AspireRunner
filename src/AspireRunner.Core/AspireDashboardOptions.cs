@@ -92,7 +92,7 @@ public sealed class RunnerOptions
     /// <summary>
     /// Pipe the output of the Aspire Dashboard process to the logger.
     /// </summary>
-    public bool PipeOutput { get; set; } = true;
+    public bool PipeOutput { get; set; }
 
     /// <summary>
     /// Automatically launch the browser when the Aspire Dashboard starts.
