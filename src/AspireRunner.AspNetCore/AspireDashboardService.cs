@@ -4,37 +4,31 @@ using Microsoft.Extensions.Logging;
 
 namespace AspireRunner.AspNetCore;
 
-public class AspireDashboardService : BackgroundService
+public class AspireDashboardService(ILogger<AspireDashboardService> logger, AspireDashboard? aspireDashboard = null) : IHostedService
 {
-    private readonly AspireDashboard? _aspireDashboard;
-    private readonly ILogger<AspireDashboardService> _logger;
-
-    public AspireDashboardService(ILogger<AspireDashboardService> logger, AspireDashboard? aspireDashboard = null)
-    {
-        _logger = logger;
-        _aspireDashboard = aspireDashboard;
-    }
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         // Avoid blocking the startup process
         await Task.Yield();
 
-        if (_aspireDashboard == null)
+        if (aspireDashboard == null)
         {
-            _logger.LogError("Failed to start Aspire Dashboard Service, Aspire Dashboard is unavailable");
+            logger.LogError("The Aspire Dashboard is unavailable");
             return;
         }
 
-        stoppingToken.Register(() =>
+        logger.LogInformation("Starting the Aspire Dashboard Service");
+        await aspireDashboard.StartAsync();
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (aspireDashboard == null)
         {
-            _logger.LogInformation("Stopping Aspire Dashboard Service");
-            _aspireDashboard.StopAsync();
-        });
+            return;
+        }
 
-        _logger.LogInformation("Starting Aspire Dashboard Service");
-        await _aspireDashboard.StartAsync();
-
-        await _aspireDashboard.WaitForExitAsync(stoppingToken);
+        logger.LogInformation("Stopping the Aspire Dashboard Service");
+        await aspireDashboard.StopAsync();
     }
 }
