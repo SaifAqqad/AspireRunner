@@ -43,13 +43,13 @@ var app = builder.Build();
 
 ### Configuration
 
-The runner can be configured with the [`AspireDashboardOptions`](https://github.com/SaifAqqad/AspireRunner/blob/master/src/AspireRunner.Core/AspireDashboardOptions.cs) class, which
+The runner can be configured with the [`AspireDashboardOptions`](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/AspireDashboardOptions.cs) class, which
 contains a subset of the [options supported by the Aspire dashboard](https://github.com/dotnet/aspire/blob/v8.0.1/src/Aspire.Dashboard/Configuration/DashboardOptions.cs), but also
 has runner-specific options under the `Runner` property:
 
 - `PipeOutput` (bool): When enabled, the runner will pipe the output of the dashboard process to the logger.
 - `LaunchBrowser` (bool): When enabled, the runner will attempt to launch the dashboard in the default browser on startup.
-- `SingleInstanceHandling` ([enum](https://github.com/SaifAqqad/AspireRunner/blob/master/src/AspireRunner.Core/AspireDashboardOptions.cs#L134)): Controls how the runner should
+- `SingleInstanceHandling` ([enum](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/AspireDashboardOptions.cs#L134)): Controls how the runner should
   handle multiple instances of the dashboard process:
     1. `WarnAndExit`: Logs a warning and exits if an existing instance is found.
     2. `Ignore`: Disables checking for running instances of the Aspire Dashboard. Note that new instances will fail to start if an existing one is using the same port
