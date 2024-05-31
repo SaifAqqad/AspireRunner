@@ -61,6 +61,8 @@ var dashboardOptions = new AspireDashboardOptions
 logger.LogDebug("Dashboard options: {@DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
 
 var aspireDashboard = new AspireDashboard(dotnet, nugetHelper, dashboardOptions, logger);
+
+Console.CancelKeyPress +=  (_, _) => aspireDashboard.Stop();
 aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
 
 var (isInstalled, _) = aspireDashboard.IsInstalled();

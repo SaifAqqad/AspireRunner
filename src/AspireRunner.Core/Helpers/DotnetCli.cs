@@ -104,7 +104,6 @@ public partial class DotnetCli
             throw new InvalidOperationException("Failed to start dotnet process");
         }
 
-        Console.CancelKeyPress += (_, _) => process.Kill(true);
         if (outputHandler != null)
         {
             process.OutputDataReceived += (_, e) =>
