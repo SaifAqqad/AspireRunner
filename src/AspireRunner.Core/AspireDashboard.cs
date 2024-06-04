@@ -1,7 +1,6 @@
 ﻿using AspireRunner.Core.Extensions;
 using AspireRunner.Core.Helpers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
 
@@ -38,11 +37,11 @@ public partial class AspireDashboard
     /// </summary>
     public bool IsRunning => _process?.HasExited is false;
 
-    public AspireDashboard(DotnetCli dotnetCli, NugetHelper nugetHelper, IOptions<AspireDashboardOptions> options, ILogger<AspireDashboard> logger)
+    public AspireDashboard(DotnetCli dotnetCli, NugetHelper nugetHelper, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
     {
         _logger = logger;
         _dotnetCli = dotnetCli;
-        _options = options.Value;
+        _options = options;
         _nugetHelper = nugetHelper;
 
         _runnerFolder = Path.Combine(_dotnetCli.DataPath, DataFolder);
@@ -75,17 +74,17 @@ public partial class AspireDashboard
         _logger.LogTrace("Installed runtimes: {InstalledRuntimes}", string.Join(", ", installedRuntimes.Select(v => v.ToString())));
         if (installedRuntimes.Length == 0)
         {
-            throw new ApplicationException($"The runner requires the '{AspRuntimeName}' runtime");
+            throw new ApplicationException($"The dashboard requires version '{MinimumRuntimeVersion}' or newer of the '{AspRuntimeName}' runtime");
         }
 
         var preferredVersion = Version.TryParse(_options.Runner.RuntimeVersion, out var rv) ? rv : null;
         if (preferredVersion != null && !installedRuntimes.Any(v => v.IsCompatibleWith(preferredVersion)))
         {
-            _logger.LogWarning("The specified runtime version {RuntimeVersion} is not installed, falling back to the latest installed version", preferredVersion);
+            _logger.LogWarning("The specified runtime version '{RuntimeVersion}' is either not installed or incompatible with the dashboard, falling back to the latest installed version", preferredVersion);
             preferredVersion = null;
         }
 
-        var (isInstalled, isWorkload) = IsInstalled();
+        var isInstalled = IsInstalled(out var isWorkload);
         if (!isInstalled)
         {
             if (!_options.Runner.AutoDownload)
@@ -154,31 +153,20 @@ public partial class AspireDashboard
     /// <summary>
     /// Checks if the Aspire Dashboard is installed.
     /// </summary>
-    /// <returns>
-    /// A tuple containing two boolean values:
-    /// <list type="bullet">
-    ///     <item>Installed: Whether the Aspire Dashboard is installed.</item>
-    ///     <item>Workload: Whether it's installed as a workload (rather than downloaded by the runner).</item>
-    /// </list>
-    /// </returns>
-    public (bool Installed, bool Workload) IsInstalled()
+    public bool IsInstalled() => IsInstalled(out _);
+
+    private bool IsInstalled(out bool isWorkload)
     {
-        if (_dotnetCli is { SdkPath: not null } && _dotnetCli.GetInstalledWorkloads().Contains(WorkloadId))
+        if (_dotnetCli.SdkPath != null && _dotnetCli.GetInstalledWorkloads().Contains(WorkloadId))
         {
             _logger.LogTrace("Using the Aspire Dashboard workload");
-            return (true, true);
+            return isWorkload = true;
         }
 
+        isWorkload = false;
         var downloadsFolder = Path.Combine(_runnerFolder, DownloadFolder);
-        if (!Directory.Exists(downloadsFolder))
-        {
-            return (false, false);
-        }
 
-        return (
-            Installed: Directory.EnumerateDirectories(downloadsFolder, "*.*").Any(),
-            Workload: false
-        );
+        return Directory.Exists(downloadsFolder) && Directory.EnumerateDirectories(downloadsFolder, "*.*").Any();
     }
 
     /// <summary>
@@ -221,7 +209,6 @@ public partial class AspireDashboard
     /// Waits for the Aspire Dashboard process to exit.
     /// </summary>
     public void WaitForExit() => _process?.WaitForExit();
-
 
     /// <summary>
     /// Waits for the Aspire Dashboard process to exit asynchronously or until the cancellation token is triggered.

@@ -65,8 +65,7 @@ var aspireDashboard = new AspireDashboard(dotnet, nugetHelper, dashboardOptions,
 Console.CancelKeyPress +=  (_, _) => aspireDashboard.Stop();
 aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
 
-var (isInstalled, _) = aspireDashboard.IsInstalled();
-if (!isInstalled && !arguments.AutoDownload)
+if (!aspireDashboard.IsInstalled() && !arguments.AutoDownload)
 {
     logger.LogError($"""
                      The Aspire Dashboard is not installed.

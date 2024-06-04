@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Options;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace AspireRunner.Core;
 
@@ -7,7 +6,7 @@ namespace AspireRunner.Core;
 /// Configuration options used by the Aspire Dashboard.
 /// <see href="https://github.com/dotnet/aspire/tree/v8.0.0-preview.6.24214.1/src/Aspire.Dashboard/Configuration"/>
 /// </summary>
-public class AspireDashboardOptions : IOptions<AspireDashboardOptions>
+public class AspireDashboardOptions
 {
     /// <summary>
     /// The application name to be displayed in the dashboard UI.
@@ -21,9 +20,6 @@ public class AspireDashboardOptions : IOptions<AspireDashboardOptions>
     public RunnerOptions Runner { get; set; } = new();
 
     public TelemetryLimitOptions? TelemetryLimits { get; set; }
-
-    [JsonIgnore]
-    public AspireDashboardOptions Value => this;
 }
 
 public class OtlpOptions
