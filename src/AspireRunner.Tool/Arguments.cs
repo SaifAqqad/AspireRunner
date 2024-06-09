@@ -2,7 +2,8 @@
 
 namespace AspireRunner.Tool;
 
-public record Arguments
+[Verb("run", isDefault: true, aliases: ["launch"], HelpText = "Launch the Aspire dashboard")]
+public record RunArguments
 {
     [Option('b', "browser", HelpText = "Launch the dashboard in the default browser")]
     public bool LaunchBrowser { get; set; }
@@ -28,9 +29,23 @@ public record Arguments
     [Option('r', "runtime-version", HelpText = "The version of the .NET runtime to use")]
     public string? RuntimeVersion { get; set; }
 
-    [Option('d', "auto-download", Default = true, HelpText = "Automatically download the dashboard if it's not installed")]
-    public bool AutoDownload { get; set; }
+    [Option('v', "verbose", HelpText = "Enable verbose logging")]
+    public bool Verbose { get; set; }
+}
 
-    [Option('v', "Verbose", HelpText = "Enable verbose logging")]
+[Verb("install", HelpText = "Download and install the Aspire dashboard")]
+public class InstallArguments
+{
+    [Option('r', "runtime-version", HelpText = "The version of the .NET runtime to use")]
+    public string? RuntimeVersion { get; set; }
+
+    [Option('v', "verbose", HelpText = "Enable verbose logging")]
+    public bool Verbose { get; set; }
+}
+
+[Verb("uninstall", HelpText = "Uninstall the Aspire dashboard")]
+public class UninstallArguments
+{
+    [Option('v', "verbose", HelpText = "Enable verbose logging")]
     public bool Verbose { get; set; }
 }
