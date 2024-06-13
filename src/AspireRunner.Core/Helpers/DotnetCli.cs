@@ -1,43 +1,48 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Extensions.Logging;
 
 namespace AspireRunner.Core.Helpers;
 
-public partial class DotnetCli
+public partial class DotnetCli(ILogger<DotnetCli> logger)
 {
     public const string DataFolderName = ".dotnet";
 
-    public static readonly string Executable = OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet";
+    public static readonly string Executable = PlatformHelper.AsExecutable("dotnet");
 
-    public string CliPath { get; private init; } = null!;
+    public string CliPath { get; private set; } = null!;
 
-    public string DataPath { get; private init; } = null!;
+    public string DataPath { get; private set; } = null!;
 
     public string? SdkPath { get; private set; }
 
-    private DotnetCli() { }
+    public bool Initialized { get; private set; }
 
     /// <summary>
-    /// Creates a new instance of the <see cref="DotnetCli"/> class.
+    /// Initializes the <see cref="DotnetCli"/> instance.
     /// </summary>
     /// <returns>
-    /// A new instance of the <see cref="DotnetCli"/> class or null if the dotnet CLI wasn't found.
+    /// True if the initialization was successful, false otherwise.
     /// </returns>
-    public static DotnetCli? TryCreate()
+    public async Task<bool> InitializeAsync()
     {
-        var cliPath = GetCliPath();
-        if (cliPath == null)
+        if (Initialized)
         {
-            return null;
+            return true;
         }
 
-        var cli = new DotnetCli
+        try
         {
-            CliPath = cliPath,
-            DataPath = GetOrCreateDataPath()
-        };
+            CliPath = GetCliPath();
+            Initialized = true;
 
-        cli.SdkPath = cli.GetSdkPath();
-        return cli;
+            DataPath = GetOrCreateDataPath();
+            SdkPath = await GetSdkPathAsync();
+            return Initialized;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("Failed to initialize DotnetCli, {Error}", ex.Message);
+            return Initialized = false;
+        }
     }
 
     /// <summary>
@@ -46,21 +51,19 @@ public partial class DotnetCli
     /// <param name="arguments">The arguments to pass to the dotnet CLI.</param>
     /// <returns>The full output of the dotnet CLI.</returns>
     /// <exception cref="InvalidOperationException">The dotnet CLI process failed to start.</exception>
-    public string RunAndGet(string arguments)
+    public async Task<string> GetAsync(string arguments)
     {
-        var process = Process.Start(new ProcessStartInfo(Path.Combine(CliPath, Executable), arguments)
+        if (!Initialized)
         {
-            RedirectStandardOutput = true,
-            UseShellExecute = false
-        });
-
-        if (process == null)
-        {
-            throw new InvalidOperationException("Failed to start dotnet process");
+            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
         }
 
-        process.WaitForExit();
-        return process.StandardOutput.ReadToEnd();
+        var commandResult = await Cli.Wrap(Path.Combine(CliPath, Executable))
+            .WithWorkingDirectory(CliPath)
+            .WithArguments(arguments)
+            .ExecuteBufferedAsync();
+
+        return commandResult.StandardOutput;
     }
 
     /// <summary>
@@ -73,64 +76,33 @@ public partial class DotnetCli
     /// <param name="errorHandler">An action that receives the error output of the process (stderr).</param>
     /// <returns>The started process.</returns>
     /// <exception cref="InvalidOperationException">The dotnet CLI process failed to start.</exception>
-    public Process Run(string[] arguments, string? workingDirectory = null, IDictionary<string, string>? environement = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
+    public CommandTask<CommandResult> RunAsync(string[] arguments, string? workingDirectory = null, IReadOnlyDictionary<string, string?>? environement = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
     {
-        var processStartInfo = new ProcessStartInfo(Path.Combine(CliPath, Executable))
+        if (!Initialized)
         {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            WorkingDirectory = workingDirectory,
-            WindowStyle = ProcessWindowStyle.Hidden
-        };
-
-        foreach (var argument in arguments)
-        {
-            processStartInfo.ArgumentList.Add(argument);
+            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
         }
 
-        if (environement != null)
-        {
-            foreach (var (key, value) in environement)
-            {
-                processStartInfo.Environment[key] = value;
-            }
-        }
+        var command = Cli.Wrap(Path.Combine(CliPath, Executable))
+            .WithWorkingDirectory(workingDirectory ?? CliPath)
+            .WithArguments(arguments, true);
 
-        var process = Process.Start(processStartInfo);
-        if (process == null)
+        if (environement is { Count: > 0 })
         {
-            throw new InvalidOperationException("Failed to start dotnet process");
+            command = command.WithEnvironmentVariables(environement);
         }
 
         if (outputHandler != null)
         {
-            process.OutputDataReceived += (_, e) =>
-            {
-                if (e.Data != null)
-                {
-                    outputHandler(e.Data);
-                }
-            };
-
-            process.BeginOutputReadLine();
+            command = command.WithStandardOutputPipe(PipeTarget.ToDelegate(outputHandler));
         }
 
         if (errorHandler != null)
         {
-            process.ErrorDataReceived += (_, e) =>
-            {
-                if (e.Data != null)
-                {
-                    errorHandler(e.Data);
-                }
-            };
-
-            process.BeginErrorReadLine();
+            command = command.WithStandardErrorPipe(PipeTarget.ToDelegate(errorHandler));
         }
 
-        return process;
+        return command.ExecuteAsync();
     }
 
     /// <summary>
@@ -139,6 +111,11 @@ public partial class DotnetCli
     /// <returns>An array containing the paths of all the dotnet packs folders available.</returns>
     public string[] GetPacksFolders()
     {
+        if (!Initialized)
+        {
+            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
+        }
+
         var folders = new List<string>();
 
         if (SdkPath != null)
@@ -163,9 +140,14 @@ public partial class DotnetCli
     /// Runs <c>dotnet workload list</c> and parses the output to get all installed workloads.
     /// </summary>
     /// <returns>An array containing all installed workloads.</returns>
-    public string[] GetInstalledWorkloads()
+    public async Task<string[]> GetInstalledWorkloadsAsync()
     {
-        var workloadsOutput = RunAndGet("workload list");
+        if (!Initialized)
+        {
+            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
+        }
+
+        var workloadsOutput = await GetAsync("workload list");
         var workloadsMatch = TableContentRegex.Match(workloadsOutput);
         if (!workloadsMatch.Success)
         {
@@ -183,9 +165,14 @@ public partial class DotnetCli
     /// Returns all installed runtimes.
     /// </summary>
     /// <returns>A tuple array containing the name and version of each installed runtime</returns>
-    public (string Name, Version Version)[] GetInstalledRuntimes()
+    public async Task<(string Name, Version Version)[]> GetInstalledRuntimesAsync()
     {
-        var runtimesOutput = RunAndGet("--list-runtimes");
+        if (!Initialized)
+        {
+            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
+        }
+
+        var runtimesOutput = await GetAsync("--list-runtimes");
         if (string.IsNullOrWhiteSpace(runtimesOutput))
         {
             return [];
@@ -201,10 +188,9 @@ public partial class DotnetCli
     /// <summary>
     /// Returns the path of the latest SDK installed.
     /// </summary>
-    /// <returns>The path of the latest SDK installed or null if no SDK was found.</returns>
-    private string? GetSdkPath()
+    private async Task<string?> GetSdkPathAsync()
     {
-        var sdksOutput = RunAndGet("--list-sdks");
+        var sdksOutput = await GetAsync("--list-sdks");
         var sdks = sdksOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => SdkOutputRegex.Match(s))
             .Where(m => m.Success)
@@ -224,14 +210,16 @@ public partial class DotnetCli
     /// Ensures the existence of the dotnet data folder (<c>~/.dotnet</c>.) and returns its path.
     /// </summary>
     /// <returns>The path to the dotnet data folder.</returns>
-    private static string GetOrCreateDataPath()
+    private string GetOrCreateDataPath()
     {
         var dataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), DataFolderName);
-        if (!Directory.Exists(dataFolderPath))
+        if (Directory.Exists(dataFolderPath))
         {
-            Directory.CreateDirectory(dataFolderPath);
+            return dataFolderPath;
         }
 
+        logger.LogTrace("Creating dotnet data folder at {Path}", dataFolderPath);
+        Directory.CreateDirectory(dataFolderPath);
         return dataFolderPath;
     }
 
@@ -242,75 +230,26 @@ public partial class DotnetCli
     /// </summary>
     /// <returns>The path to the dotnet CLI or null if it wasn't found.</returns>
     /// <seealso href="https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables#dotnet_host_path"/>
-    private static string? GetCliPath()
+    private string GetCliPath()
     {
         var dotnetPath = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
         if (!string.IsNullOrWhiteSpace(dotnetPath) && File.Exists(dotnetPath))
         {
-            return Path.GetDirectoryName(dotnetPath);
+            logger.LogTrace("Using dotnet CLI from DOTNET_HOST_PATH environment variable");
+            return Path.GetDirectoryName(dotnetPath)!;
         }
 
-        var paths = GetEnvPaths();
+        var paths = PlatformHelper.GetPaths();
         foreach (var path in paths)
         {
             dotnetPath = Path.Combine(path, Executable);
             if (File.Exists(dotnetPath))
             {
+                logger.LogTrace("Using dotnet CLI from PATH environment variable, {Path}", dotnetPath);
                 return path;
             }
         }
 
-        return null;
-    }
-
-    /// <summary>
-    /// Returns all paths in the system's <c>PATH</c> environment variable.
-    /// </summary>
-    /// <returns>A string array containing all paths in the system's <c>PATH</c> environment variable.</returns>
-    /// <remarks>When running inside WSL, windows paths (like <c>/mnt/c/*</c>) will be excluded to avoid conflicts with windows dotnet installations</remarks>
-    private static string[] GetEnvPaths()
-    {
-        var pathEnv = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrWhiteSpace(pathEnv))
-        {
-            return [];
-        }
-
-        var paths = pathEnv.Split(Path.PathSeparator);
-        if (IsRunningWsl())
-        {
-            // exclude wsl paths to avoid conflicts
-            paths = paths.Where(p => !p.Contains("/mnt/c/")).ToArray();
-        }
-
-        return paths;
-    }
-
-    /// <summary>
-    /// Checks if the current process is running inside WSL.
-    /// </summary>
-    /// <returns>True if the current process is running inside WSL, false otherwise.</returns>
-    private static bool IsRunningWsl()
-    {
-        if (!OperatingSystem.IsLinux())
-        {
-            return false;
-        }
-
-        var process = Process.Start(new ProcessStartInfo("uname", "-r")
-        {
-            RedirectStandardOutput = true,
-            UseShellExecute = false
-        });
-
-        if (process == null)
-        {
-            return false;
-        }
-
-        process.WaitForExit();
-        var output = process.StandardOutput.ReadToEnd();
-
-        return output.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase);
+        throw new ApplicationException("The dotnet CLI was not found in PATH or DOTNET_HOST_PATH environment variables");
     }
 }

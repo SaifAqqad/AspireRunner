@@ -4,26 +4,30 @@ using Microsoft.Extensions.Logging;
 
 namespace AspireRunner.AspNetCore;
 
-public class AspireDashboardService(ILogger<AspireDashboardService> logger, AspireDashboard? aspireDashboard = null) : IHostedService
+public class AspireDashboardService(ILogger<AspireDashboardService> logger, AspireDashboard aspireDashboard) : IHostedService
 {
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
         // Avoid blocking the startup process
-        await Task.Yield();
-
-        if (aspireDashboard == null)
+        _ = Task.Run(async () =>
         {
-            logger.LogError("The Aspire Dashboard is unavailable");
-            return;
-        }
+            try
+            {
+                logger.LogInformation("Starting the Aspire Dashboard Service");
+                await aspireDashboard.StartAsync();
+            }
+            catch (Exception e)
+            {
+                logger.LogError("An error occurred while starting the Aspire Dashboard Service, {Error}", e.Message);
+            }
+        }, cancellationToken);
 
-        logger.LogInformation("Starting the Aspire Dashboard Service");
-        await aspireDashboard.StartAsync();
+        return Task.CompletedTask;
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (aspireDashboard == null)
+        if (!aspireDashboard.IsRunning)
         {
             return;
         }

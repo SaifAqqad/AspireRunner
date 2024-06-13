@@ -4,9 +4,9 @@ namespace AspireRunner.Core.Extensions;
 
 public static class OptionsExtensions
 {
-    public static Dictionary<string, string> ToEnvironmentVariables(this AspireDashboardOptions options)
+    public static Dictionary<string, string?> ToEnvironmentVariables(this AspireDashboardOptions options)
     {
-        var envVars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var envVars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         var jsonObject = JsonSerializer.SerializeToNode(options)!.AsObject().Flatten();
 
         foreach (var property in jsonObject)

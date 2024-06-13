@@ -4,11 +4,12 @@ using AspireRunner.Tool;
 using CommandLine;
 using CommandLine.Text;
 using Microsoft.Extensions.Logging;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 var logger = new ConsoleLogger<AspireDashboard>();
 
-logger.LogInformation(Bold().Green("Aspire Dashboard Runner"));
+logger.LogInformation(Bold().Magenta("Aspire Dashboard Runner"));
 
 var argsResult = Parser.Default.ParseArguments<Arguments>(args);
 if (argsResult.Errors.Any() || argsResult.Value is null)
@@ -27,8 +28,8 @@ logger.Verbose = arguments.Verbose;
 logger.LogDebug("Arguments: {@Arguments}", arguments);
 
 var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper> { Verbose = arguments.Verbose });
-var dotnet = DotnetCli.TryCreate();
-if (dotnet is null)
+var dotnet = new DotnetCli(new ConsoleLogger<DotnetCli>());
+if (!await dotnet.InitializeAsync())
 {
     logger.LogError("Could not find the dotnet CLI, make sure it is installed and available in the PATH");
     return ReturnCodes.DotnetCliError;
@@ -62,10 +63,15 @@ logger.LogDebug("Dashboard options: {@DashboardOptions}", JsonSerializer.Seriali
 
 var aspireDashboard = new AspireDashboard(dotnet, nugetHelper, dashboardOptions, logger);
 
-Console.CancelKeyPress +=  (_, _) => aspireDashboard.Stop();
+await aspireDashboard.InitializeAsync();
 aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
 
-if (!aspireDashboard.IsInstalled() && !arguments.AutoDownload)
+var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
+using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
+using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
+
+var isInstalled = await aspireDashboard.IsInstalledAsync();
+if (!isInstalled && !arguments.AutoDownload)
 {
     logger.LogError($"""
                      The Aspire Dashboard is not installed.

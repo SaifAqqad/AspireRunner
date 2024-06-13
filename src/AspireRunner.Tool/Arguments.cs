@@ -31,6 +31,6 @@ public record Arguments
     [Option('d', "auto-download", Default = true, HelpText = "Automatically download the dashboard if it's not installed")]
     public bool AutoDownload { get; set; }
 
-    [Option('v', "Verbose", HelpText = "Enable verbose logging")]
+    [Option('v', "verbose", HelpText = "Enable verbose logging")]
     public bool Verbose { get; set; }
 }

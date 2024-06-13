@@ -6,9 +6,10 @@ using System.Text;
 
 namespace AspireRunner.Core;
 
+// TODO: rewrite the whole thing :/
 public partial class AspireDashboard
 {
-    private readonly string _runnerFolder;
+    private string _runnerFolder = null!;
     private readonly string _nugetPackageName;
 
     private readonly DotnetCli _dotnetCli;
@@ -16,9 +17,11 @@ public partial class AspireDashboard
     private readonly AspireDashboardOptions _options;
     private readonly ILogger<AspireDashboard> _logger;
 
-    private Process? _process;
     private StringBuilder? _lastError;
     private DateTimeOffset? _lastErrorTime;
+
+    private Process? _dashboardProcess;
+    private CommandTask<CommandResult>? _dashboardCommand;
 
     /// <summary>
     /// Triggered when the Aspire Dashboard has started and the UI is ready.
@@ -35,7 +38,7 @@ public partial class AspireDashboard
     /// <summary>
     /// Whether the Aspire Dashboard process is currently running.
     /// </summary>
-    public bool IsRunning => _process?.HasExited is false;
+    public bool IsRunning => _dashboardCommand is { ProcessId: > 0 } && _dashboardProcess is { HasExited: false };
 
     public AspireDashboard(DotnetCli dotnetCli, NugetHelper nugetHelper, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
     {
@@ -43,6 +46,15 @@ public partial class AspireDashboard
         _dotnetCli = dotnetCli;
         _options = options;
         _nugetHelper = nugetHelper;
+        _nugetPackageName = $"{SdkName}.{PlatformHelper.Rid}";
+    }
+
+    public async Task<bool> InitializeAsync()
+    {
+        if (!await _dotnetCli.InitializeAsync())
+        {
+            return false;
+        }
 
         _runnerFolder = Path.Combine(_dotnetCli.DataPath, DataFolder);
         if (!Directory.Exists(_runnerFolder))
@@ -50,7 +62,7 @@ public partial class AspireDashboard
             Directory.CreateDirectory(_runnerFolder);
         }
 
-        _nugetPackageName = $"{SdkName}.{RuntimeIdentification.Rid}";
+        return true;
     }
 
     /// <summary>
@@ -59,14 +71,19 @@ public partial class AspireDashboard
     /// <exception cref="ApplicationException">
     /// Thrown when the Aspire Dashboard is already running.
     /// </exception>
-    public async ValueTask StartAsync()
+    public async Task StartAsync()
     {
-        if (_process != null)
+        if (!await InitializeAsync())
         {
-            throw new ApplicationException("The Aspire Dashboard is already running");
+            throw new ApplicationException("Could not find the dotnet CLI, make sure it is installed and available in the PATH");
         }
 
-        var installedRuntimes = _dotnetCli.GetInstalledRuntimes()
+        if (IsRunning)
+        {
+            return;
+        }
+
+        var installedRuntimes = (await _dotnetCli.GetInstalledRuntimesAsync())
             .Where(r => r.Name is AspRuntimeName && r.Version >= MinimumRuntimeVersion)
             .Select(r => r.Version)
             .ToArray();
@@ -84,7 +101,7 @@ public partial class AspireDashboard
             preferredVersion = null;
         }
 
-        var isInstalled = IsInstalled(out var isWorkload);
+        var (isInstalled, isWorkload) = await GetInstallationPropertiesAsync();
         if (!isInstalled)
         {
             if (!_options.Runner.AutoDownload)
@@ -92,7 +109,7 @@ public partial class AspireDashboard
                 throw new ApplicationException("The Aspire Dashboard is not installed");
             }
 
-            _logger.LogWarning("The Aspire Dashboard is not installed, downloading the latest compatible version...");
+            _logger.LogWarning("The Aspire Dashboard is not installed, download1ing the latest compatible version...");
             var (downloadSuccessful, downloadedVersion) = await TryDownloadAsync(preferredVersion, installedRuntimes);
             if (!downloadSuccessful)
             {
@@ -139,7 +156,8 @@ public partial class AspireDashboard
         try
         {
             _logger.LogInformation("Starting Aspire Dashboard {Version}", version);
-            _process = _dotnetCli.Run(["exec", Path.Combine(path, DllName)], path, _options.ToEnvironmentVariables(), OutputHandler, ErrorHandler);
+            _dashboardCommand = _dotnetCli.RunAsync(["exec", Path.Combine(path, DllName)], path, _options.ToEnvironmentVariables(), OutputHandler, ErrorHandler);
+            _dashboardProcess = Process.GetProcessById(_dashboardCommand.ProcessId);
         }
         catch (Exception e)
         {
@@ -153,20 +171,25 @@ public partial class AspireDashboard
     /// <summary>
     /// Checks if the Aspire Dashboard is installed.
     /// </summary>
-    public bool IsInstalled() => IsInstalled(out _);
+    public async Task<bool> IsInstalledAsync() => (await GetInstallationPropertiesAsync()).Installed;
 
-    private bool IsInstalled(out bool isWorkload)
+    private async Task<(bool Installed, bool Workload)> GetInstallationPropertiesAsync()
     {
-        if (_dotnetCli.SdkPath != null && _dotnetCli.GetInstalledWorkloads().Contains(WorkloadId))
+        if (_dotnetCli.SdkPath != null)
         {
-            _logger.LogTrace("Using the Aspire Dashboard workload");
-            return isWorkload = true;
+            var workloads = await _dotnetCli.GetInstalledWorkloadsAsync();
+            if (workloads.Contains(WorkloadId))
+            {
+                _logger.LogTrace("Using the Aspire Dashboard workload");
+                return (true, true);
+            }
         }
 
-        isWorkload = false;
         var downloadsFolder = Path.Combine(_runnerFolder, DownloadFolder);
-
-        return Directory.Exists(downloadsFolder) && Directory.EnumerateDirectories(downloadsFolder, "*.*").Any();
+        return (
+            Installed: Directory.Exists(downloadsFolder) && Directory.EnumerateDirectories(downloadsFolder, "*.*").Any(),
+            Workload: false
+        );
     }
 
     /// <summary>
@@ -174,7 +197,7 @@ public partial class AspireDashboard
     /// </summary>
     public void Stop()
     {
-        if (_process == null)
+        if (!IsRunning)
         {
             return;
         }
@@ -182,22 +205,23 @@ public partial class AspireDashboard
         try
         {
             _logger.LogInformation("Stopping the Aspire Dashboard...");
-            _process.Kill(true);
+            _dashboardProcess?.Kill(true);
         }
         catch (InvalidOperationException)
         {
             _logger.LogWarning("The Aspire Dashboard has already been stopped");
         }
 
-        _process = null;
+        _dashboardCommand = null;
+        _dashboardProcess = null;
     }
 
     /// <summary>
     /// Stops the Aspire Dashboard process asynchronously (using Task.Run).
     /// </summary>
-    public async ValueTask StopAsync()
+    public async Task StopAsync()
     {
-        if (_process == null)
+        if (_dashboardCommand == null)
         {
             return;
         }
@@ -206,22 +230,24 @@ public partial class AspireDashboard
     }
 
     /// <summary>
-    /// Waits for the Aspire Dashboard process to exit.
-    /// </summary>
-    public void WaitForExit() => _process?.WaitForExit();
-
-    /// <summary>
     /// Waits for the Aspire Dashboard process to exit asynchronously or until the cancellation token is triggered.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
-    public async ValueTask WaitForExitAsync(CancellationToken cancellationToken = default)
+    /// <exception cref="TaskCanceledException"> thrown when the cancellation token is triggered.</exception>
+    public async Task WaitForExitAsync(CancellationToken cancellationToken = default)
     {
-        if (_process == null || cancellationToken.IsCancellationRequested)
+        if (!IsRunning || cancellationToken.IsCancellationRequested)
         {
             return;
         }
 
-        await _process.WaitForExitAsync(cancellationToken);
+        if (cancellationToken == default || cancellationToken == CancellationToken.None)
+        {
+            await _dashboardCommand!.Task;
+            return;
+        }
+
+        await Task.WhenAny(_dashboardCommand!.Task, Task.Delay(Timeout.Infinite, cancellationToken));
     }
 
     private async Task<(bool Downloaded, Version? Version)> TryDownloadAsync(Version? preferredVersion, Version[] installedRuntimes)
@@ -332,7 +358,7 @@ public partial class AspireDashboard
 
     private void PersistProcessId()
     {
-        File.WriteAllText(Path.Combine(_runnerFolder, InstanceFile), _process!.Id.ToString());
+        File.WriteAllText(Path.Combine(_runnerFolder, InstanceFile), _dashboardProcess!.Id.ToString());
     }
 
     private Process? TryGetRunningProcess()
@@ -371,14 +397,7 @@ public partial class AspireDashboard
             var url = match.Groups["url"].Value;
             if (_options.Runner.LaunchBrowser)
             {
-                try
-                {
-                    LaunchBrowser(url);
-                }
-                catch
-                {
-                    _logger.LogWarning("Failed to launch the browser");
-                }
+                _ = LaunchBrowserAsync(url);
             }
 
             DashboardStarted?.Invoke(url);
@@ -425,33 +444,21 @@ public partial class AspireDashboard
         });
     }
 
-    private static void LaunchBrowser(string url)
+    private Task LaunchBrowserAsync(string url)
     {
-        if (OperatingSystem.IsWindows())
+        try
         {
-            Process.Start(new ProcessStartInfo
-            {
-                UseShellExecute = true,
-                FileName = url
-            });
+            var (urlOpener, args) = PlatformHelper.GetUrlOpener(url);
+
+            return Cli.Wrap(urlOpener)
+                .WithArguments(args)
+                .ExecuteAsync();
         }
-        else if (OperatingSystem.IsLinux())
+        catch
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "xdg-open",
-                UseShellExecute = true,
-                Arguments = $"\"{url}\""
-            });
+            _logger.LogWarning("Failed to launch the browser");
         }
-        else if (OperatingSystem.IsMacOS())
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "open",
-                UseShellExecute = true,
-                Arguments = $"\"{url}\""
-            });
-        }
+
+        return Task.CompletedTask;
     }
 }
