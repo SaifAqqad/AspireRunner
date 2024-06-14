@@ -16,20 +16,48 @@ public static class PlatformHelper
     ];
 
     private static bool? _isWsl;
+    private static string? _rid;
+    private static string? _osIdentifier;
+    private static string? _linuxUrlOpener;
 
-    public static string Rid { get; }
-
-    public static string OsIdentifier { get; }
-
-    static PlatformHelper()
+    public static string Rid()
     {
-        OsIdentifier = GetOsIdentifier();
-        Rid = $"{OsIdentifier}-{RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant()}";
+        if (_rid is not null)
+        {
+            return _rid;
+        }
+
+        return _rid = $"{OsIdentifier()}-{RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant()}";
+    }
+
+    public static string OsIdentifier()
+    {
+        if (_osIdentifier is not null)
+        {
+            return _osIdentifier;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return _osIdentifier = "win";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return _osIdentifier = "linux";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return _osIdentifier = "osx";
+        }
+
+        return _osIdentifier = "unknown";
     }
 
     public static string AsExecutable(string fileName)
     {
-        return OsIdentifier is "win" ? $"{fileName}.exe" : fileName;
+        return OsIdentifier() is "win" ? $"{fileName}.exe" : fileName;
     }
 
     public static bool IsWsl()
@@ -39,7 +67,7 @@ public static class PlatformHelper
             return _isWsl.Value;
         }
 
-        if (OsIdentifier is not "linux")
+        if (OsIdentifier() is not "linux")
         {
             return false;
         }
@@ -57,47 +85,58 @@ public static class PlatformHelper
             return false;
         }
 
-        var isWsl = command.StandardOutput.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase);
-        _isWsl = isWsl;
-
-        return isWsl;
+        return (_isWsl = command.StandardOutput.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase)).Value;
     }
 
-    public static (string Executable, string[] Arguments) GetUrlOpener(string url)
+
+    /// <summary>
+    /// Returns the platform-specific executable and arguments to open a URL.
+    /// </summary>
+    /// <remarks>
+    /// On Linux, the method will try to find a suitable URL opener from the system's <c>PATH</c>.
+    /// <br/>
+    /// The following URL openers are checked in order:
+    /// <list type="number">
+    /// <item><description>sensible-browser</description></item>
+    /// <item><description>x-www-browser</description></item>
+    /// <item><description>xdg-open</description></item>
+    /// <item><description>gnome-open</description></item>
+    /// <item><description>kde-open</description></item>
+    /// <item><description>exo-open</description></item>
+    /// <item><description>open</description></item>
+    /// </list>
+    /// </remarks>
+    public static (string Executable, string[] Arguments)? GetUrlOpener(string url)
     {
-        if (OsIdentifier is "win" || IsWsl())
+        var osIdentifier = OsIdentifier();
+        if (osIdentifier is "win" || IsWsl())
         {
             var cmdEscapedUrl = url.Replace("&", "^&").Replace(@"""", @"""""");
             return ("cmd.exe", ["/c", $"start {cmdEscapedUrl}"]);
         }
 
-        if (OsIdentifier is "osx")
+        if (osIdentifier is "osx")
         {
             return ("open", [url]);
         }
 
-        var availableOpeners = new Dictionary<string, string>();
-        foreach (var path in GetPaths())
+        if (_linuxUrlOpener is not null)
         {
-            foreach (var opener in LinuxUrlOpeners)
-            {
-                var fullPath = Path.Combine(path, opener);
-                if (File.Exists(fullPath))
-                {
-                    availableOpeners[opener] = fullPath;
-                }
-            }
+            return ("setsid", [_linuxUrlOpener, url]);
         }
 
-        if (availableOpeners.Count == 0)
+        var envPaths = GetPaths();
+        _linuxUrlOpener = LinuxUrlOpeners
+            .SelectMany(o => envPaths.Select(p => (Name: o, Path: Path.Combine(p, o))))
+            .FirstOrDefault(p => File.Exists(p.Path)).Name;
+
+        if (_linuxUrlOpener is null)
         {
-            throw new InvalidOperationException("No suitable URL opener found");
+            return null;
         }
-
-        var openerName = LinuxUrlOpeners.First(o => availableOpeners.ContainsKey(o));
-
+        
         // setsid is used to detach the launched process from the runner
-        return ("setsid", [openerName, url]);
+        return ("setsid", [_linuxUrlOpener, url]);
     }
 
     /// <summary>
@@ -121,25 +160,5 @@ public static class PlatformHelper
         }
 
         return paths;
-    }
-
-    private static string GetOsIdentifier()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return "win";
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return "linux";
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            return "osx";
-        }
-
-        return "unknown";
     }
 }
