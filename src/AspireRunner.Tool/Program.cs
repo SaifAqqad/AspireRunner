@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-var logger = new ConsoleLogger<AspireDashboard>();
+var logger = new ConsoleLogger<Program>(verbose: false);
 
 logger.LogInformation(Bold().Magenta("Aspire Dashboard Runner"));
 
@@ -27,8 +27,8 @@ var arguments = argsResult.Value;
 logger.Verbose = arguments.Verbose;
 logger.LogDebug("Arguments: {@Arguments}", arguments);
 
-var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper> { Verbose = arguments.Verbose });
-var dotnet = new DotnetCli(new ConsoleLogger<DotnetCli>());
+var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper>(arguments.Verbose));
+var dotnet = new DotnetCli(new ConsoleLogger<DotnetCli>(arguments.Verbose));
 if (!await dotnet.InitializeAsync())
 {
     logger.LogError("Could not find the dotnet CLI, make sure it is installed and available in the PATH");
@@ -61,16 +61,10 @@ var dashboardOptions = new AspireDashboardOptions
 
 logger.LogDebug("Dashboard options: {@DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
 
-var aspireDashboard = new AspireDashboard(dotnet, nugetHelper, dashboardOptions, logger);
+var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
+await aspireDashboardManager.InitializeAsync();
 
-await aspireDashboard.InitializeAsync();
-aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
-
-var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
-using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
-using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
-
-var isInstalled = await aspireDashboard.IsInstalledAsync();
+var (isInstalled, _) = await aspireDashboardManager.IsInstalledAsync();
 if (!isInstalled && !arguments.AutoDownload)
 {
     logger.LogError($"""
@@ -82,6 +76,13 @@ if (!isInstalled && !arguments.AutoDownload)
 
     return ReturnCodes.AspireInstallationError;
 }
+
+var aspireDashboard = await aspireDashboardManager.GetDashboardAsync(dashboardOptions, new ConsoleLogger<AspireDashboard>(arguments.Verbose));
+aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
+
+var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
+using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
+using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
 
 await aspireDashboard.StartAsync();
 await aspireDashboard.WaitForExitAsync();

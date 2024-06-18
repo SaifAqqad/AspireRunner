@@ -1,11 +1,14 @@
 ﻿using AspireRunner.Core;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AspireRunner.AspNetCore;
 
-public class AspireDashboardService(ILogger<AspireDashboardService> logger, AspireDashboard aspireDashboard) : IHostedService
+public class AspireDashboardService(ILogger<AspireDashboardService> logger, AspireDashboardManager dashboardManager, IOptions<AspireDashboardOptions> options, ILoggerFactory loggerFactory) : IHostedService
 {
+    private AspireDashboard? _aspireDashboard;
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Avoid blocking the startup process
@@ -14,7 +17,17 @@ public class AspireDashboardService(ILogger<AspireDashboardService> logger, Aspi
             try
             {
                 logger.LogInformation("Starting the Aspire Dashboard Service");
-                await aspireDashboard.StartAsync();
+
+                if (!await dashboardManager.InitializeAsync())
+                {
+                    logger.LogError("Failed to initialize the Aspire Dashboard Manager");
+                    return;
+                }
+
+                _aspireDashboard = await dashboardManager.GetDashboardAsync(options.Value, loggerFactory.CreateLogger<AspireDashboard>());
+                logger.LogInformation("Found Aspire Dashboard version {Version}", _aspireDashboard.Version);
+
+                await _aspireDashboard.StartAsync();
             }
             catch (Exception e)
             {
@@ -27,12 +40,12 @@ public class AspireDashboardService(ILogger<AspireDashboardService> logger, Aspi
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (!aspireDashboard.IsRunning)
+        if (_aspireDashboard is null || !_aspireDashboard.IsRunning)
         {
             return;
         }
 
         logger.LogInformation("Stopping the Aspire Dashboard Service");
-        await aspireDashboard.StopAsync();
+        await _aspireDashboard.StopAsync();
     }
 }

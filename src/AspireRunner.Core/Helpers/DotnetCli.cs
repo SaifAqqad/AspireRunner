@@ -228,7 +228,6 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
     /// <br/>
     /// If the <c>DOTNET_HOST_PATH</c> environment variable is set, it will be used, otherwise the system's <c>PATH</c> will be checked for a dotnet CLI.
     /// </summary>
-    /// <returns>The path to the dotnet CLI or null if it wasn't found.</returns>
     /// <seealso href="https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables#dotnet_host_path"/>
     private string GetCliPath()
     {

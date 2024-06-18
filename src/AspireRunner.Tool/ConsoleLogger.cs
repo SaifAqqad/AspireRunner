@@ -6,6 +6,11 @@ public class ConsoleLogger<T> : ILogger<T>
 {
     public bool Verbose { get; set; }
 
+    public ConsoleLogger(bool verbose)
+    {
+        Verbose = verbose;
+    }
+
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
     {
         if (!IsEnabled(logLevel))

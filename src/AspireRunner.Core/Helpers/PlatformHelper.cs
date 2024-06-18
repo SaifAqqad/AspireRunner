@@ -88,7 +88,6 @@ public static class PlatformHelper
         return (_isWsl = command.StandardOutput.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase)).Value;
     }
 
-
     /// <summary>
     /// Returns the platform-specific executable and arguments to open a URL.
     /// </summary>
@@ -134,7 +133,7 @@ public static class PlatformHelper
         {
             return null;
         }
-        
+
         // setsid is used to detach the launched process from the runner
         return ("setsid", [_linuxUrlOpener, url]);
     }
@@ -155,7 +154,7 @@ public static class PlatformHelper
         var paths = pathEnv.Split(Path.PathSeparator);
         if (IsWsl())
         {
-            // exclude wsl paths to avoid conflicts
+            // exclude windows paths to avoid conflicts
             paths = paths.Where(p => !p.Contains("/mnt/c/")).ToArray();
         }
 
