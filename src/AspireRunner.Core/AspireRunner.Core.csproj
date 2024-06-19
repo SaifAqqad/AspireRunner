@@ -3,7 +3,7 @@
     <PropertyGroup>
         <Version>1.1.4</Version>
         <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
-        <RuntimeIdentifiers>win-x64;osx-x64;linux-x64</RuntimeIdentifiers>
+        <RuntimeIdentifiers>win;osx;linux</RuntimeIdentifiers>
         <langversion>latest</langversion>
 
         <Nullable>enable</Nullable>
