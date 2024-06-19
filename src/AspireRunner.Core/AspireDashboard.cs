@@ -1,5 +1,6 @@
 ﻿using AspireRunner.Core.Extensions;
 using AspireRunner.Core.Helpers;
+using Medallion.Threading.FileSystem;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text;
@@ -18,6 +19,7 @@ public partial class AspireDashboard
     private readonly string _runnerFolder;
     private readonly DotnetCli _dotnetCli;
     private readonly ILogger<AspireDashboard> _logger;
+    private readonly FileDistributedLock _instanceLock;
     private readonly IReadOnlyDictionary<string, string?> _environmentVariables;
 
     public Version Version { get; private set; }
@@ -51,6 +53,7 @@ public partial class AspireDashboard
         _dotnetCli = dotnetCli;
         _environmentVariables = options.ToEnvironmentVariables();
         _runnerFolder = Path.Combine(_dotnetCli.DataPath, DataFolder);
+        _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerFolder), InstanceLock);
     }
 
     public void Start()
@@ -60,37 +63,41 @@ public partial class AspireDashboard
             return;
         }
 
-        switch (Options.Runner.SingleInstanceHandling)
+        using (_instanceLock.Acquire(timeout: TimeSpan.FromSeconds(InstanceLockTimeout)))
         {
-            case SingleInstanceHandling.ReplaceExisting:
+            switch (Options.Runner.SingleInstanceHandling)
             {
-                TryGetRunningInstance()?.Kill(true);
-                break;
-            }
-            case SingleInstanceHandling.WarnAndExit:
-            {
-                var runningInstance = TryGetRunningInstance();
-                if (runningInstance != null)
+                case SingleInstanceHandling.ReplaceExisting:
                 {
-                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", runningInstance.Id);
-                    return;
+                    TryGetRunningInstance()?.Kill(true);
+                    break;
                 }
+                case SingleInstanceHandling.WarnAndExit:
+                {
+                    var runningInstance = TryGetRunningInstance();
+                    if (runningInstance != null)
+                    {
+                        _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", runningInstance.Id);
+                        return;
+                    }
 
-                break;
+                    break;
+                }
             }
-        }
 
-        try
-        {
-            _dashboardCommand = _dotnetCli.RunAsync(["exec", Path.Combine(_dllPath, DllName)], _dllPath, _environmentVariables, OutputHandler, ErrorHandler);
-            _dashboardProcess = Process.GetProcessById(_dashboardCommand.ProcessId);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
-        }
+            try
+            {
+                _dashboardCommand = _dotnetCli.RunAsync(["exec", Path.Combine(_dllPath, DllName)], _dllPath, _environmentVariables, OutputHandler, ErrorHandler);
+                _dashboardProcess = Process.GetProcessById(_dashboardCommand.ProcessId);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
+                return;
+            }
 
-        PersistInstance();
+            PersistInstance();
+        }
     }
 
     /// <summary>
@@ -118,10 +125,9 @@ public partial class AspireDashboard
     }
 
     /// <summary>
-    /// Waits for the Aspire Dashboard process to exit asynchronously or until the cancellation token is triggered.
+    /// Returns a task that completes when the Aspire Dashboard process exits or when the cancellation token is triggered.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
-    /// <exception cref="TaskCanceledException"> thrown when the cancellation token is triggered.</exception>
     public Task WaitForExitAsync(CancellationToken cancellationToken = default)
     {
         if (!IsRunning || cancellationToken.IsCancellationRequested)
@@ -129,7 +135,7 @@ public partial class AspireDashboard
             return Task.CompletedTask;
         }
 
-        if (cancellationToken == default || cancellationToken == CancellationToken.None)
+        if (cancellationToken == default)
         {
             return _dashboardCommand!.Task;
         }

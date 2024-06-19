@@ -22,5 +22,9 @@ public partial class AspireDashboard
 
     internal static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
 
+    private const int InstanceLockTimeout = 30;
+
+    private const string InstanceLock = "aspire_dashboard";
+
     private const string InstanceFile = "aspire-dashboard.instance";
 }
