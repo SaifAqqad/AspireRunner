@@ -27,7 +27,7 @@ public class AspireDashboardService(ILogger<AspireDashboardService> logger, Aspi
                 _aspireDashboard = await dashboardManager.GetDashboardAsync(options.Value, loggerFactory.CreateLogger<AspireDashboard>());
                 logger.LogInformation("Found Aspire Dashboard version {Version}", _aspireDashboard.Version);
 
-                await _aspireDashboard.StartAsync();
+                _aspireDashboard.Start();
             }
             catch (Exception e)
             {
@@ -38,14 +38,14 @@ public class AspireDashboardService(ILogger<AspireDashboardService> logger, Aspi
         return Task.CompletedTask;
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
         if (_aspireDashboard is null || !_aspireDashboard.IsRunning)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         logger.LogInformation("Stopping the Aspire Dashboard Service");
-        await _aspireDashboard.StopAsync();
+        return Task.Run(_aspireDashboard.Stop, CancellationToken.None);
     }
 }

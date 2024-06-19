@@ -15,6 +15,7 @@ public partial class AspireDashboard
     private CommandTask<CommandResult>? _dashboardCommand;
 
     private readonly string _dllPath;
+    private readonly string _runnerFolder;
     private readonly DotnetCli _dotnetCli;
     private readonly ILogger<AspireDashboard> _logger;
     private readonly IReadOnlyDictionary<string, string?> _environmentVariables;
@@ -49,13 +50,34 @@ public partial class AspireDashboard
         _dllPath = dllPath;
         _dotnetCli = dotnetCli;
         _environmentVariables = options.ToEnvironmentVariables();
+        _runnerFolder = Path.Combine(_dotnetCli.DataPath, DataFolder);
     }
 
-    public async Task StartAsync()
+    public void Start()
     {
         if (IsRunning)
         {
             return;
+        }
+
+        switch (Options.Runner.SingleInstanceHandling)
+        {
+            case SingleInstanceHandling.ReplaceExisting:
+            {
+                TryGetRunningInstance()?.Kill(true);
+                break;
+            }
+            case SingleInstanceHandling.WarnAndExit:
+            {
+                var runningInstance = TryGetRunningInstance();
+                if (runningInstance != null)
+                {
+                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", runningInstance.Id);
+                    return;
+                }
+
+                break;
+            }
         }
 
         try
@@ -68,7 +90,7 @@ public partial class AspireDashboard
             _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
         }
 
-        // TODO: Multiple Instances handling
+        PersistInstance();
     }
 
     /// <summary>
@@ -96,37 +118,23 @@ public partial class AspireDashboard
     }
 
     /// <summary>
-    /// Stops the Aspire Dashboard process asynchronously (using Task.Run).
-    /// </summary>
-    public async Task StopAsync()
-    {
-        if (_dashboardCommand == null)
-        {
-            return;
-        }
-
-        await Task.Run(Stop);
-    }
-
-    /// <summary>
     /// Waits for the Aspire Dashboard process to exit asynchronously or until the cancellation token is triggered.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
     /// <exception cref="TaskCanceledException"> thrown when the cancellation token is triggered.</exception>
-    public async Task WaitForExitAsync(CancellationToken cancellationToken = default)
+    public Task WaitForExitAsync(CancellationToken cancellationToken = default)
     {
         if (!IsRunning || cancellationToken.IsCancellationRequested)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         if (cancellationToken == default || cancellationToken == CancellationToken.None)
         {
-            await _dashboardCommand!.Task;
-            return;
+            return _dashboardCommand!.Task;
         }
 
-        await Task.WhenAny(_dashboardCommand!.Task, Task.Delay(Timeout.Infinite, cancellationToken));
+        return Task.WhenAny(_dashboardCommand!.Task, Task.Delay(Timeout.Infinite, cancellationToken));
     }
 
     private void OutputHandler(string output)
@@ -215,5 +223,28 @@ public partial class AspireDashboard
         }
 
         return Task.CompletedTask;
+    }
+
+    private void PersistInstance()
+    {
+        File.WriteAllText(Path.Combine(_runnerFolder, InstanceFile), _dashboardProcess!.Id.ToString());
+    }
+
+    private Process? TryGetRunningInstance()
+    {
+        var instanceFile = Path.Combine(_runnerFolder, InstanceFile);
+        if (!File.Exists(instanceFile) || !int.TryParse(File.ReadAllText(instanceFile), out var pid))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Process.GetProcessById(pid) is { ProcessName: "dotnet" } p ? p : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

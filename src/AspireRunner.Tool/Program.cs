@@ -84,8 +84,8 @@ var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
 using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
 using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
 
-await aspireDashboard.StartAsync();
+aspireDashboard.Start();
 await aspireDashboard.WaitForExitAsync();
 
-logger.LogDebug("Aspire Dashboard exited, {HasErrors}", aspireDashboard.HasErrors);
+logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
 return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;

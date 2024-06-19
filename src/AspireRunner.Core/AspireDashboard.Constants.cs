@@ -14,8 +14,6 @@ public partial class AspireDashboard
 
     internal const string DownloadFolder = "dashboard";
 
-    internal const string InstanceFile = "AspireRunner-instances.json";
-
     internal const string LoginConsoleMessage = "Login to the dashboard at";
 
     internal const string DashboardStartedConsoleMessage = "Now listening on:";
@@ -23,4 +21,6 @@ public partial class AspireDashboard
     internal const int DefaultErrorLogDelay = 2000;
 
     internal static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
+
+    private const string InstanceFile = "aspire-dashboard.instance";
 }
