@@ -77,15 +77,23 @@ if (!isInstalled && !arguments.AutoDownload)
     return ReturnCodes.AspireInstallationError;
 }
 
-var aspireDashboard = await aspireDashboardManager.GetDashboardAsync(dashboardOptions, new ConsoleLogger<AspireDashboard>(arguments.Verbose));
-aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
+try
+{
+    var aspireDashboard = await aspireDashboardManager.GetDashboardAsync(dashboardOptions, new ConsoleLogger<AspireDashboard>(arguments.Verbose));
+    aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
 
-var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
-using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
-using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
+    var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
+    using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
+    using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
 
-aspireDashboard.Start();
-await aspireDashboard.WaitForExitAsync();
+    aspireDashboard.Start();
+    await aspireDashboard.WaitForExitAsync();
 
-logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
-return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
+    logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
+    return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
+}
+catch (Exception e)
+{
+    logger.LogError("An error occurred while starting the Aspire Dashboard, {Error}", e.Message);
+    return ReturnCodes.AspireDashboardError;
+}

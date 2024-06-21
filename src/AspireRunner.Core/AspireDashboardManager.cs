@@ -34,7 +34,7 @@ public class AspireDashboardManager
             return false;
         }
 
-        _nugetPackageName = $"{AspireDashboard.SdkName}.{PlatformHelper.Rid}";
+        _nugetPackageName = $"{AspireDashboard.SdkName}.{PlatformHelper.Rid()}";
         _runnerFolder = Path.Combine(_dotnetCli.DataPath, AspireDashboard.DataFolder);
         if (!Directory.Exists(_runnerFolder))
         {
@@ -169,15 +169,17 @@ public class AspireDashboardManager
                 ? installedRuntimes.Where(v => v.IsCompatibleWith(preferredVersion)).Max()
                 : installedRuntimes.Max();
 
-            var latestAvailableVersion = preferredVersion != null
-                ? availableVersions.Where(preferredVersion.IsCompatibleWith).Max()
-                : availableVersions.Where(v => v.Major == latestRuntimeVersion!.Major).Max();
-
+            var latestAvailableVersion = availableVersions
+                    .Where(preferredVersion != null ? preferredVersion.IsCompatibleWith : v => v.Major == latestRuntimeVersion!.Major)
+                    .DefaultIfEmpty()
+                    .Max()
+                ?? availableVersions.First(); // Fallback to the latest version
+            
             if (latestAvailableVersion > latestInstalledVersion)
             {
                 _logger.LogWarning("A newer version of the Aspire Dashboard is available, downloading version {Version}", latestAvailableVersion);
 
-                var newVersionFolder = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder, latestAvailableVersion!.ToString());
+                var newVersionFolder = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder, latestAvailableVersion.ToString());
                 var downloadSuccessful = await _nugetHelper.DownloadPackageAsync(_nugetPackageName, latestAvailableVersion, newVersionFolder);
                 if (downloadSuccessful)
                 {
@@ -243,16 +245,20 @@ public class AspireDashboardManager
     private async Task<Version> FetchLatestVersionAsync(Version[] installedRuntimes, Version? preferredVersion)
     {
         var availableVersions = await _nugetHelper.GetPackageVersionsAsync(_nugetPackageName);
+        if (availableVersions.Length == 0)
+        {
+            throw new ApplicationException("No versions of the Aspire Dashboard are available");
+        }
 
         var latestRuntimeVersion = preferredVersion != null
             ? installedRuntimes.Where(v => v.IsCompatibleWith(preferredVersion)).Max()
             : installedRuntimes.Max();
 
-        var versionToDownload = (
-            preferredVersion != null
-                ? availableVersions.Where(preferredVersion.IsCompatibleWith).Max()
-                : availableVersions.Where(v => v.Major == latestRuntimeVersion!.Major).Max()
-        ) ?? availableVersions.First(); // Fallback to the latest version
+        var versionToDownload = availableVersions
+                .Where(preferredVersion != null ? preferredVersion.IsCompatibleWith : v => v.Major == latestRuntimeVersion!.Major)
+                .DefaultIfEmpty()
+                .Max()
+            ?? availableVersions.First(); // Fallback to the latest version
 
         return versionToDownload;
     }

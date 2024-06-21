@@ -69,7 +69,7 @@ public static class PlatformHelper
 
         if (OsIdentifier() is not "linux")
         {
-            return false;
+            return (_isWsl = false).Value;
         }
 
         var command = Cli.Wrap("uname")
