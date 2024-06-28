@@ -2,25 +2,24 @@
 using AspireRunner.Core.Helpers;
 using AspireRunner.Tool;
 using CommandLine;
-using CommandLine.Text;
 using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
 var logger = new ConsoleLogger<Program>(verbose: false);
-
 logger.LogInformation(Bold().Magenta("Aspire Dashboard Runner"));
 
 var argsResult = Parser.Default.ParseArguments<Arguments>(args);
 if (argsResult.Errors.Any() || argsResult.Value is null)
 {
-    if (argsResult.Errors.FirstOrDefault() is not (HelpRequestedError or VersionRequestedError))
+    switch (argsResult.Errors.FirstOrDefault())
     {
-        logger.LogError("Invalid arguments");
+        case HelpRequestedError or VersionRequestedError:
+            return ReturnCodes.Success;
+        default:
+            logger.LogError("Invalid arguments");
+            return ReturnCodes.InvalidArguments;
     }
-
-    logger.LogInformation("{Usage}", HelpText.RenderUsageText(argsResult));
-    return ReturnCodes.InvalidArguments;
 }
 
 var arguments = argsResult.Value;
@@ -35,7 +34,7 @@ if (!await dotnet.InitializeAsync())
     return ReturnCodes.DotnetCliError;
 }
 
-var protocol = arguments.UseHttps ? "https" : "http";
+var protocol = arguments.UseHttps is true or null ? "https" : "http";
 var dashboardOptions = new AspireDashboardOptions
 {
     Frontend = new FrontendOptions
@@ -52,20 +51,23 @@ var dashboardOptions = new AspireDashboardOptions
     Runner = new RunnerOptions
     {
         PipeOutput = false,
-        AutoDownload = arguments.AutoDownload,
+        AutoDownload = arguments.AutoDownload ?? true,
         LaunchBrowser = arguments.LaunchBrowser,
         RuntimeVersion = arguments.RuntimeVersion,
         SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
     }
 };
 
-logger.LogDebug("Dashboard options: {@DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
+if (logger.IsEnabled(LogLevel.Debug))
+{
+    logger.LogDebug("Dashboard options: {@DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
+}
 
 var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
 await aspireDashboardManager.InitializeAsync();
 
 var (isInstalled, _) = await aspireDashboardManager.IsInstalledAsync();
-if (!isInstalled && !arguments.AutoDownload)
+if (!isInstalled && !dashboardOptions.Runner.AutoDownload)
 {
     logger.LogError($"""
                      The Aspire Dashboard is not installed.
