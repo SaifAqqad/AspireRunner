@@ -7,12 +7,27 @@ using NuGet.Versioning;
 
 namespace AspireRunner.Core.Helpers;
 
-public class NugetHelper(ILogger<NugetHelper> logger)
+public class NugetHelper
 {
-    private const string RepoUrl = "https://api.nuget.org/v3/index.json";
+    private const string DefaultRepoUrl = "https://api.nuget.org/v3/index.json";
 
-    private readonly SourceCacheContext _cache = new();
-    private readonly SourceRepository _repository = Repository.Factory.GetCoreV3(RepoUrl);
+    private readonly SourceCacheContext _cache;
+    private readonly SourceRepository _repository;
+    private readonly ILogger<NugetHelper> _logger;
+
+    public NugetHelper(ILogger<NugetHelper> logger)
+    {
+        _logger = logger;
+        _cache = new SourceCacheContext();
+
+        var repoUrl = Environment.GetEnvironmentVariable("NUGET_REPO_URL");
+        if (string.IsNullOrWhiteSpace(repoUrl))
+        {
+            repoUrl = DefaultRepoUrl;
+        }
+
+        _repository = Repository.Factory.GetCoreV3(repoUrl);
+    }
 
     public async Task<Version[]> GetPackageVersionsAsync(string packageName)
     {
@@ -33,7 +48,7 @@ public class NugetHelper(ILogger<NugetHelper> logger)
             using var packageStream = new MemoryStream();
             var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
 
-            logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", packageName, version, destinationPath);
+            _logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", packageName, version, destinationPath);
 
             var success = await resource.CopyNupkgToStreamAsync(
                 packageName,
@@ -56,7 +71,7 @@ public class NugetHelper(ILogger<NugetHelper> logger)
         }
         catch (Exception e)
         {
-            logger.LogError("Failed to download {PackageName} {Version} to {DestinationPath}, {Exception}", packageName, version, destinationPath, e.Message);
+            _logger.LogError("Failed to download {PackageName} {Version} to {DestinationPath}, {Exception}", packageName, version, destinationPath, e.Message);
             return false;
         }
     }
@@ -65,7 +80,7 @@ public class NugetHelper(ILogger<NugetHelper> logger)
     {
         try
         {
-            logger.LogTrace("Extracting {SourceFile} to {TargetPath}", sourcefile, targetpath);
+            _logger.LogTrace("Extracting {SourceFile} to {TargetPath}", sourcefile, targetpath);
 
             // Ensure the directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(targetpath)!);
@@ -77,7 +92,7 @@ public class NugetHelper(ILogger<NugetHelper> logger)
         }
         catch (Exception ex)
         {
-            logger.LogError("Failed to extract {SourceFile} to {TargetPath}, {Exception}", sourcefile, targetpath, ex.Message);
+            _logger.LogError("Failed to extract {SourceFile} to {TargetPath}, {Exception}", sourcefile, targetpath, ex.Message);
             throw;
         }
     }
