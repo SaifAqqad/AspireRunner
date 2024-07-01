@@ -77,7 +77,7 @@ public class AspireDashboardManager
                 throw new ApplicationException("The Aspire Dashboard is not installed");
             }
 
-            _logger.LogWarning("The Aspire Dashboard is not installed, download1ing the latest compatible version...");
+            _logger.LogWarning("The Aspire Dashboard is not installed, downloading the latest compatible version...");
             var latestVersion = await FetchLatestVersionAsync(installedRuntimes, preferredVersion);
 
             var downloadedVersion = await InstallAsync(installedRuntimes, latestVersion);
