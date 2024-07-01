@@ -68,21 +68,21 @@ public partial class AspireDashboard
             switch (Options.Runner.SingleInstanceHandling)
             {
                 case SingleInstanceHandling.ReplaceExisting:
-                {
-                    TryGetRunningInstance()?.Kill(true);
-                    break;
-                }
-                case SingleInstanceHandling.WarnAndExit:
-                {
-                    var runningInstance = TryGetRunningInstance();
-                    if (runningInstance != null)
                     {
-                        _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", runningInstance.Id);
-                        return;
+                        TryGetRunningInstance()?.Kill(true);
+                        break;
                     }
+                case SingleInstanceHandling.WarnAndExit:
+                    {
+                        var runningInstance = TryGetRunningInstance();
+                        if (runningInstance != null)
+                        {
+                            _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", runningInstance.Id);
+                            return;
+                        }
 
-                    break;
-                }
+                        break;
+                    }
             }
 
             try
@@ -233,20 +233,40 @@ public partial class AspireDashboard
 
     private void PersistInstance()
     {
-        File.WriteAllText(Path.Combine(_runnerFolder, InstanceFile), _dashboardProcess!.Id.ToString());
+        var instanceFilePath = Path.Combine(_runnerFolder, InstanceFile);
+        File.WriteAllText(instanceFilePath, $"{_dashboardProcess!.Id}:{Environment.ProcessId}");
     }
 
-    private Process? TryGetRunningInstance()
+    private (Process? Dashboard, Process? Runner, string? Url) TryGetRunningInstance()
     {
-        var instanceFile = Path.Combine(_runnerFolder, InstanceFile);
-        if (!File.Exists(instanceFile) || !int.TryParse(File.ReadAllText(instanceFile), out var pid))
+        var instanceFilePath = Path.Combine(_runnerFolder, InstanceFile);
+        if (!File.Exists(instanceFilePath))
         {
-            return null;
+            return default;
         }
 
+        var instanceInfo = File.ReadAllLines(instanceFilePath);
+        if (instanceInfo.Length == 0)
+        {
+            return default;
+        }
+
+        var pids = instanceInfo[0].Split(':', 2);
+        var dashboardPid = int.TryParse(pids[0], out var _d) ? _d : 0;
+        var runnerPid = int.TryParse(pids.ElementAtOrDefault(1), out var _r) ? _r : 0;
+
+        var runner = runnerPid > 0 && TryGetProcess(runnerPid) is { } _rp ? _rp : null;
+        var dashboard = dashboardPid > 0 && TryGetProcess(dashboardPid) is { ProcessName: "dotnet" } _dp ? _dp : null;
+        var url = string.IsNullOrWhiteSpace(instanceInfo.ElementAtOrDefault(1)) ? null : instanceInfo[1];
+
+        return (runner, dashboard, url);
+    }
+
+    private static Process? TryGetProcess(int pid)
+    {
         try
         {
-            return Process.GetProcessById(pid) is { ProcessName: "dotnet" } p ? p : null;
+            return Process.GetProcessById(pid);
         }
         catch
         {
