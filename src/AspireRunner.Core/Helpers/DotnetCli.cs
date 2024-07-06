@@ -202,7 +202,9 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
             return null;
         }
 
-        var latestSdk = sdks.MaxBy(s => new Version(s.Version));
+        var latestSdk = sdks
+            .Where(s => Version.TryParse(s.Version, out var _))
+            .MaxBy(s => Version.Parse(s.Version));
         return Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(latestSdk.Path));
     }
 

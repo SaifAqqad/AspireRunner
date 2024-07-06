@@ -6,3 +6,5 @@ riderModule.iml
 /**/.idea
 /**/nupkg
 /**/dist
+/.cr/personal/FavoritesList
+/.vs/AspireRunner

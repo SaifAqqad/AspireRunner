@@ -4,7 +4,7 @@ namespace AspireRunner.Core.Helpers;
 
 public partial class DotnetCli
 {
-    private static readonly Regex SdkOutputRegex = new(@"([\d\.]+)\s+(?:\[(.+)\])?", RegexOptions.Compiled);
+    private static readonly Regex SdkOutputRegex = new(@"([\d\.\w\-]+?)\s+(?:\[(.+)\])?", RegexOptions.Compiled);
 
     private static readonly Regex RuntimeOutputRegex = new(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled);
 
