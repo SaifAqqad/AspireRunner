@@ -36,12 +36,16 @@
         <PackageReference Include="CliWrap" Version="3.6.6" />
         <PackageReference Include="DistributedLock.FileSystem" Version="1.0.2" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
-        <PackageReference Include="NuGet.Protocol" Version="6.9.1" />
+        <PackageReference Include="NuGet.Protocol" Version="6.10.1" />
         <PackageReference Include="SemanticVersioning" Version="2.0.2"/>
     </ItemGroup>
 
-    <ItemGroup Condition="('$(TargetFramework)'=='net6.0') Or ('$(TargetFramework)'=='net7.0') ">
-        <PackageReference Include="System.Text.Json" Version="8.0.3"/>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+      <PackageReference Include="System.Text.Json" Version="8.0.4" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
+      <PackageReference Include="System.Text.Json" Version="8.0.4" />
     </ItemGroup>
 
 </Project>
