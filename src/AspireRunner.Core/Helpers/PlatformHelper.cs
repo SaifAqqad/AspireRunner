@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace AspireRunner.Core.Helpers;
 
-public static class PlatformHelper
+internal static class PlatformHelper
 {
     private static readonly string[] LinuxUrlOpeners =
     [
@@ -72,20 +72,13 @@ public static class PlatformHelper
             return (_isWsl = false).Value;
         }
 
-        var command = Cli.Wrap("uname")
-            .WithArguments(["-r"])
-            .WithValidation(CommandResultValidation.None)
-            .ExecuteBufferedAsync()
-            .ConfigureAwait(false)
-            .GetAwaiter()
-            .GetResult();
-
-        if (command is not { ExitCode: 0 })
+        var uname = ProcessHelper.Get("uname", ["-r"]);
+        if (string.IsNullOrWhiteSpace(uname.Output))
         {
             return false;
         }
 
-        return (_isWsl = command.StandardOutput.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase)).Value;
+        return (_isWsl = uname.Output.Contains("-microsoft-standard", StringComparison.OrdinalIgnoreCase)).Value;
     }
 
     /// <summary>

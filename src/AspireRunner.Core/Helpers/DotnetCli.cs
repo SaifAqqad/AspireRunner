@@ -6,13 +6,15 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
 {
     public const string DataFolderName = ".dotnet";
 
-    public static readonly string Executable = PlatformHelper.AsExecutable("dotnet");
+    public static readonly string ExecutableName = PlatformHelper.AsExecutable("dotnet");
 
     public string CliPath { get; private set; } = null!;
 
     public string DataPath { get; private set; } = null!;
 
     public string? SdkPath { get; private set; }
+
+    public string Executable { get; private set; } = null!;
 
     public bool Initialized { get; private set; }
 
@@ -32,6 +34,7 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
         try
         {
             CliPath = GetCliPath();
+            Executable = Path.Combine(CliPath, ExecutableName);
             Initialized = true;
 
             DataPath = GetOrCreateDataPath();
@@ -43,66 +46,6 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
             logger.LogError("Failed to initialize DotnetCli, {Error}", ex.Message);
             return Initialized = false;
         }
-    }
-
-    /// <summary>
-    /// Runs the dotnet CLI with the specified arguments, waits for completion and returns the full output.
-    /// </summary>
-    /// <param name="arguments">The arguments to pass to the dotnet CLI.</param>
-    /// <returns>The full output of the dotnet CLI.</returns>
-    /// <exception cref="InvalidOperationException">The dotnet CLI process failed to start.</exception>
-    public async Task<string> GetAsync(string arguments)
-    {
-        if (!Initialized)
-        {
-            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
-        }
-
-        var commandResult = await Cli.Wrap(Path.Combine(CliPath, Executable))
-            .WithWorkingDirectory(CliPath)
-            .WithArguments(arguments)
-            .ExecuteBufferedAsync();
-
-        return commandResult.StandardOutput;
-    }
-
-    /// <summary>
-    /// Runs the dotnet CLI with the specified arguments.
-    /// </summary>
-    /// <param name="arguments">The arguments to pass to the dotnet CLI.</param>
-    /// <param name="workingDirectory">The working directory for the process.</param>
-    /// <param name="environement">The environment variables to set for the process.</param>
-    /// <param name="outputHandler">An action that receives the output of the process (stdout).</param>
-    /// <param name="errorHandler">An action that receives the error output of the process (stderr).</param>
-    /// <returns>The started process.</returns>
-    /// <exception cref="InvalidOperationException">The dotnet CLI process failed to start.</exception>
-    public CommandTask<CommandResult> RunAsync(string[] arguments, string? workingDirectory = null, IReadOnlyDictionary<string, string?>? environement = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
-    {
-        if (!Initialized)
-        {
-            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
-        }
-
-        var command = Cli.Wrap(Path.Combine(CliPath, Executable))
-            .WithWorkingDirectory(workingDirectory ?? CliPath)
-            .WithArguments(arguments, true);
-
-        if (environement is { Count: > 0 })
-        {
-            command = command.WithEnvironmentVariables(environement);
-        }
-
-        if (outputHandler != null)
-        {
-            command = command.WithStandardOutputPipe(PipeTarget.ToDelegate(outputHandler));
-        }
-
-        if (errorHandler != null)
-        {
-            command = command.WithStandardErrorPipe(PipeTarget.ToDelegate(errorHandler));
-        }
-
-        return command.ExecuteAsync();
     }
 
     /// <summary>
@@ -147,7 +90,7 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
             throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
         }
 
-        var workloadsOutput = await GetAsync("workload list");
+        var (workloadsOutput, _) = await ProcessHelper.GetAsync(Executable, ["workload", "list"], workingDir: CliPath);
         var workloadsMatch = TableContentRegex.Match(workloadsOutput);
         if (!workloadsMatch.Success)
         {
@@ -172,7 +115,7 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
             throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
         }
 
-        var runtimesOutput = await GetAsync("--list-runtimes");
+        var (runtimesOutput, _) = await ProcessHelper.GetAsync(Executable, ["--list-runtimes"], workingDir: CliPath);
         if (string.IsNullOrWhiteSpace(runtimesOutput))
         {
             return [];
@@ -190,7 +133,7 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
     /// </summary>
     private async Task<string?> GetSdkPathAsync()
     {
-        var sdksOutput = await GetAsync("--list-sdks");
+        var (sdksOutput, _) = await ProcessHelper.GetAsync(Executable, ["--list-sdks"], workingDir: CliPath);
         var sdks = sdksOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => SdkOutputRegex.Match(s))
             .Where(m => m.Success)
@@ -203,8 +146,9 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
         }
 
         var latestSdk = sdks
-            .Where(s => Version.TryParse(s.Version, out var _))
+            .Where(s => Version.TryParse(s.Version, out _))
             .MaxBy(s => Version.Parse(s.Version));
+
         return Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(latestSdk.Path));
     }
 
@@ -243,7 +187,7 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
         var paths = PlatformHelper.GetPaths();
         foreach (var path in paths)
         {
-            dotnetPath = Path.Combine(path, Executable);
+            dotnetPath = Path.Combine(path, ExecutableName);
             if (File.Exists(dotnetPath))
             {
                 logger.LogTrace("Using dotnet CLI from PATH environment variable, {Path}", dotnetPath);

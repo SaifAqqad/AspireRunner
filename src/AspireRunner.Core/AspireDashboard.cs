@@ -11,20 +11,18 @@ public partial class AspireDashboard
 {
     private StringBuilder? _lastError;
     private DateTimeOffset? _lastErrorTime;
-
     private Process? _dashboardProcess;
-    private CommandTask<CommandResult>? _dashboardCommand;
 
     private readonly string _dllPath;
     private readonly string _runnerFolder;
     private readonly DotnetCli _dotnetCli;
     private readonly ILogger<AspireDashboard> _logger;
     private readonly FileDistributedLock _instanceLock;
-    private readonly IReadOnlyDictionary<string, string?> _environmentVariables;
+    private readonly IDictionary<string, string?> _environmentVariables;
 
     public Version Version { get; private set; }
 
-    public AspireDashboardOptions Options { get; private set; }
+    public AspireDashboardOptions Options { get; }
 
     /// <summary>
     /// Triggered when the Aspire Dashboard has started and the UI is ready.
@@ -41,7 +39,7 @@ public partial class AspireDashboard
     /// <summary>
     /// Whether the Aspire Dashboard process is currently running.
     /// </summary>
-    public bool IsRunning => _dashboardCommand?.ProcessId > 0 && _dashboardProcess?.HasExited is false;
+    public bool IsRunning => _dashboardProcess is { HasExited: false };
 
     internal AspireDashboard(DotnetCli dotnetCli, Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
     {
@@ -91,8 +89,7 @@ public partial class AspireDashboard
 
             try
             {
-                _dashboardCommand = _dotnetCli.RunAsync(["exec", Path.Combine(_dllPath, DllName)], _dllPath, _environmentVariables, OutputHandler, ErrorHandler);
-                _dashboardProcess = Process.GetProcessById(_dashboardCommand.ProcessId);
+                _dashboardProcess = ProcessHelper.Run(_dotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
             }
             catch (Exception e)
             {
@@ -124,7 +121,6 @@ public partial class AspireDashboard
             _logger.LogWarning("The Aspire Dashboard has already been stopped");
         }
 
-        _dashboardCommand = null;
         _dashboardProcess = null;
     }
 
@@ -139,12 +135,7 @@ public partial class AspireDashboard
             return Task.CompletedTask;
         }
 
-        if (cancellationToken == default)
-        {
-            return _dashboardCommand!.Task;
-        }
-
-        return Task.WhenAny(_dashboardCommand!.Task, Task.Delay(Timeout.Infinite, cancellationToken));
+        return _dashboardProcess!.WaitForExitAsync(cancellationToken);
     }
 
     private void OutputHandler(string output)
@@ -223,9 +214,8 @@ public partial class AspireDashboard
                 return Task.CompletedTask;
             }
 
-            return Cli.Wrap(urlOpener.Value.Executable)
-                .WithArguments(urlOpener.Value.Arguments)
-                .ExecuteAsync();
+            return ProcessHelper.Run(urlOpener.Value.Executable, urlOpener.Value.Arguments)?.WaitForExitAsync()
+                ?? throw new ApplicationException("Failed to launch the browser");
         }
         catch
         {
@@ -237,6 +227,11 @@ public partial class AspireDashboard
 
     private void PersistInstance()
     {
+        if (!IsRunning)
+        {
+            return;
+        }
+
         var instanceFilePath = Path.Combine(_runnerFolder, InstanceFile);
         File.WriteAllText(instanceFilePath, $"{_dashboardProcess!.Id}:{Environment.ProcessId}");
     }
