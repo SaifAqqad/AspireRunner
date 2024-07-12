@@ -31,15 +31,9 @@ public partial class AspireDashboard
     /// </summary>
     public event Action<string>? DashboardStarted;
 
-    /// <summary>
-    /// Whether the Aspire Dashboard process has encountered any errors.
-    /// </summary>
     public bool HasErrors { get; private set; }
 
-    /// <summary>
-    /// Whether the Aspire Dashboard process is currently running.
-    /// </summary>
-    public bool IsRunning => _dashboardProcess is { HasExited: false };
+    public bool IsRunning => _dashboardProcess.IsRunning();
 
     internal AspireDashboard(DotnetCli dotnetCli, Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
     {
@@ -64,13 +58,13 @@ public partial class AspireDashboard
         using (_instanceLock.Acquire(timeout: TimeSpan.FromSeconds(InstanceLockTimeout)))
         {
             var instance = TryGetRunningInstance();
-            if (!IsProcessRunning(instance.Runner) && IsProcessRunning(instance.Dashboard))
+            if (!instance.Runner.IsRunning() && instance.Dashboard.IsRunning())
             {
                 // orphaned instance, kill it
                 instance.Dashboard!.Kill(true);
             }
 
-            if (IsProcessRunning(instance.Dashboard))
+            if (instance.Dashboard.IsRunning())
             {
                 switch (Options.Runner.SingleInstanceHandling)
                 {
@@ -270,10 +264,5 @@ public partial class AspireDashboard
         {
             return null;
         }
-    }
-
-    private static bool IsProcessRunning(Process? process)
-    {
-        return process?.HasExited is false;
     }
 }

@@ -94,6 +94,7 @@ public class AspireDashboardManager
             await TryUpdateAsync(installedRuntimes, preferredVersion);
         }
 
+        _logger.LogTrace("Aspire Installation Source: {Source}", isWorkload ? "Workload" : "NuGet");
         var installedDashboard = GetLatestInstalledVersion(isWorkload, preferredVersion);
         if (installedDashboard == null)
         {
@@ -101,7 +102,7 @@ public class AspireDashboardManager
         }
 
         var (version, path) = installedDashboard.Value;
-        _logger.LogTrace("Aspire Dashboard installation path: {AspirePath}, Workload = {Workload}", path, isWorkload);
+        _logger.LogTrace("Aspire Dashboard installation path: {AspirePath}", path);
 
         return new AspireDashboard(_dotnetCli, version, path, options, logger ?? new NullLogger<AspireDashboard>());
     }
@@ -118,7 +119,6 @@ public class AspireDashboardManager
             var workloads = await _dotnetCli.GetInstalledWorkloadsAsync();
             if (workloads.Contains(AspireDashboard.WorkloadId))
             {
-                _logger.LogTrace("Using the Aspire Dashboard workload");
                 return (true, true);
             }
         }
@@ -174,7 +174,7 @@ public class AspireDashboardManager
                     .DefaultIfEmpty()
                     .Max()
                 ?? availableVersions.First(); // Fallback to the latest version
-            
+
             if (latestAvailableVersion > latestInstalledVersion)
             {
                 _logger.LogWarning("A newer version of the Aspire Dashboard is available, downloading version {Version}", latestAvailableVersion);

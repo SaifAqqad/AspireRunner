@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace AspireRunner.Core.Extensions;
 
-public static class JsonExtensions
+internal static class JsonExtensions
 {
     public static JsonObject Flatten(this JsonNode? obj)
     {

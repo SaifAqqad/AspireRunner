@@ -51,6 +51,11 @@ internal static class ProcessHelper
         return process;
     }
 
+    public static bool IsRunning(this Process? process)
+    {
+        return process?.HasExited is false;
+    }
+
     private static ProcessStartInfo BuildProcessInfo(string processName, IEnumerable<string> arguments, IDictionary<string, string?>? environment, string? workingDir)
     {
         var startInfo = new ProcessStartInfo
