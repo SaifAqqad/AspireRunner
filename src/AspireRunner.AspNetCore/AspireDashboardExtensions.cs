@@ -11,7 +11,11 @@ public static class AspireDashboardExtensions
         services.AddOptions<AspireDashboardOptions>()
             .Configure(options => configureOptions?.Invoke(options));
 
-        AddDashboardService(services);
+        services.AddSingleton<DotnetCli>();
+        services.AddSingleton<NugetHelper>();
+        services.AddSingleton<AspireDashboardManager>();
+        services.AddHostedService<AspireDashboardService>();
+
         return services;
     }
 
@@ -19,15 +23,6 @@ public static class AspireDashboardExtensions
     {
         ArgumentNullException.ThrowIfNull(options, nameof(options));
         return services.AddAspireDashboard(options.CloneTo);
-    }
-
-    private static void AddDashboardService(IServiceCollection services)
-    {
-        services.AddSingleton<DotnetCli>();
-        services.AddSingleton<NugetHelper>();
-        services.AddSingleton<AspireDashboardManager>();
-
-        services.AddHostedService<AspireDashboardService>();
     }
 
     private static void CloneTo(this AspireDashboardOptions srcOptions, AspireDashboardOptions destOptions)

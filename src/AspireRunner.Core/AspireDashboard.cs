@@ -263,21 +263,9 @@ public partial class AspireDashboard
         _ = int.TryParse(pids[0], out var dashboardPid);
         _ = int.TryParse(pids.ElementAtOrDefault(1), out var runnerPid);
 
-        var runner = runnerPid > 0 && TryGetProcess(runnerPid) is { } rp ? rp : null;
-        var dashboard = dashboardPid > 0 && TryGetProcess(dashboardPid) is { ProcessName: "dotnet" } dp ? dp : null;
+        var runner = ProcessHelper.GetProcessOrDefault(runnerPid);
+        var dashboard = ProcessHelper.GetProcessOrDefault(dashboardPid) is { ProcessName: "dotnet" } p ? p : null;
 
         return (dashboard, runner);
-    }
-
-    private static Process? TryGetProcess(int pid)
-    {
-        try
-        {
-            return Process.GetProcessById(pid);
-        }
-        catch
-        {
-            return null;
-        }
     }
 }

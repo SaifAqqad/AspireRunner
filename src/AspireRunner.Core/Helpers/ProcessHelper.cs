@@ -4,7 +4,7 @@ namespace AspireRunner.Core.Helpers;
 
 internal static class ProcessHelper
 {
-    public static async Task<(string Output, string Error)> GetAsync(string processName, IEnumerable<string> arguments, IDictionary<string, string?>? environment = null, string? workingDir = null)
+    public static async Task<(string Output, string Error)> GetAsync(string processName, string[] arguments, IDictionary<string, string?>? environment = null, string? workingDir = null)
     {
         var process = Process.Start(BuildProcessInfo(processName, arguments, environment, workingDir));
         if (process is null)
@@ -16,7 +16,7 @@ internal static class ProcessHelper
         return (await process.StandardOutput.ReadToEndAsync(), await process.StandardError.ReadToEndAsync());
     }
 
-    public static (string Output, string Error) Get(string processName, IEnumerable<string> arguments, IDictionary<string, string?>? environment = null, string? workingDir = null)
+    public static (string Output, string Error) Get(string processName, string[] arguments, IDictionary<string, string?>? environment = null, string? workingDir = null)
     {
         var process = Process.Start(BuildProcessInfo(processName, arguments, environment, workingDir));
         if (process is null)
@@ -28,7 +28,7 @@ internal static class ProcessHelper
         return (process.StandardOutput.ReadToEnd(), process.StandardError.ReadToEnd());
     }
 
-    public static Process? Run(string processName, IEnumerable<string> arguments, IDictionary<string, string?>? environment = null, string? workingDir = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
+    public static Process? Run(string processName, string[] arguments, IDictionary<string, string?>? environment = null, string? workingDir = null, Action<string>? outputHandler = null, Action<string>? errorHandler = null)
     {
         var process = Process.Start(BuildProcessInfo(processName, arguments, environment, workingDir));
         if (process is null)
@@ -56,7 +56,24 @@ internal static class ProcessHelper
         return process?.HasExited is false;
     }
 
-    private static ProcessStartInfo BuildProcessInfo(string processName, IEnumerable<string> arguments, IDictionary<string, string?>? environment, string? workingDir)
+    public static Process? GetProcessOrDefault(int pid)
+    {
+        if (pid <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Process.GetProcessById(pid);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static ProcessStartInfo BuildProcessInfo(string processName, string[] arguments, IDictionary<string, string?>? environment, string? workingDir)
     {
         var startInfo = new ProcessStartInfo
         {
