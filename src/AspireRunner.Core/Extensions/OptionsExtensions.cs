@@ -29,6 +29,16 @@ public static class OptionsExtensions
             envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = otlpUrl;
         }
 
+        if (envVars.TryGetValue("DASHBOARD__OTLP__HTTPENDPOINTURL", out var httpOtlpUrl))
+        {
+            envVars["DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"] = httpOtlpUrl;
+        }
+
+        if (options.Otlp.EndpointUrl is null && options.Otlp.HttpEndpointUrl is null)
+        {
+            envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = OtlpOptions.DefaultOtlpEndpointUrl;
+        }
+
         if (envVars.TryGetValue("DASHBOARD__FRONTEND__ENDPOINTURLS", out var frontendUrls))
         {
             envVars["ASPNETCORE_URLS"] = frontendUrls;

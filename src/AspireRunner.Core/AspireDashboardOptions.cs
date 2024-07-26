@@ -24,6 +24,8 @@ public sealed record AspireDashboardOptions
 
 public sealed record OtlpOptions
 {
+    internal const string DefaultOtlpEndpointUrl = "http://localhost:4317";
+    
     /// <summary>
     /// Specifies the primary API key. The API key can be any text, but a value with at least 128 bits of entropy is recommended. This value is required if auth mode is API key.
     /// </summary>
@@ -42,9 +44,18 @@ public sealed record OtlpOptions
     public OtlpAuthMode AuthMode { get; set; } = OtlpAuthMode.Unsecured;
 
     /// <summary>
-    /// The OTLP endpoint. This endpoint hosts an OTLP service and receives telemetry. Securing the dashboard with HTTPS is recommended.
+    /// The OTLP/gRPC endpoint. This endpoint hosts an OTLP service to receive telemetry.
     /// </summary>
-    public string EndpointUrl { get; set; } = "https://localhost:4317";
+    public string? EndpointUrl { get; set; }
+
+    /// <summary>
+    /// The OTLP/HTTP endpoint. This endpoint hosts an OTLP service to receive telemetry. OTLP/gRPC and OTLP/HTTP endpoints can be used simultaneously.
+    /// </summary>
+    /// <remarks>
+    /// Requires Aspire Dashboard v8.1.0 or later.
+    /// https://github.com/dotnet/aspire/releases/tag/v8.1.0
+    /// </remarks>
+    public string? HttpEndpointUrl { get; set; }
 }
 
 public sealed record FrontendOptions

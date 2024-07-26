@@ -31,6 +31,13 @@ public partial class AspireDashboard
     /// </summary>
     public event Action<string>? DashboardStarted;
 
+    /// <summary>
+    /// Triggered when the OTLP endpoint is ready to receive telemetry data.
+    /// <br/>
+    /// The OTLP endpoint URL and protocol are passed to the event handler.
+    /// </summary>
+    public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
+
     public bool HasErrors { get; private set; }
 
     public bool IsRunning => _dashboardProcess.IsRunning();
@@ -145,7 +152,7 @@ public partial class AspireDashboard
             return;
         }
 
-        if (LaunchUrlRegex.Match(output) is { Success: true } match)
+        if (DashboardLaunchUrlRegex.Match(output) is { Success: true } match)
         {
             var url = match.Groups["url"].Value;
             if (Options.Runner.LaunchBrowser)
@@ -154,6 +161,14 @@ public partial class AspireDashboard
             }
 
             DashboardStarted?.Invoke(url);
+        }
+
+        if (OtlpEndpointRegex.Match(output) is { Success: true } otlpMatch)
+        {
+            var url = otlpMatch.Groups["url"].Value;
+            var protocol = otlpMatch.Groups["protocol"].Value;
+
+            OtlpEndpointReady?.Invoke((url, protocol));
         }
     }
 

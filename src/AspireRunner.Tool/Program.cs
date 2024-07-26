@@ -81,6 +81,7 @@ try
 {
     var aspireDashboard = await aspireDashboardManager.GetDashboardAsync(dashboardOptions, new ConsoleLogger<AspireDashboard>(arguments.Verbose));
     aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
+    aspireDashboard.OtlpEndpointReady += endpoint => logger.LogInformation(Green("The OTLP/{Protocol} endpoint is ready at {Url}"), endpoint.Protocol, endpoint.Url);
 
     var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
     using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
