@@ -25,9 +25,6 @@ public record Arguments
     [Option('m', "multiple", HelpText = "Allow running multiple instances of the dashboard, if this isn't passed, existing instances will be replaced")]
     public bool AllowMultipleInstances { get; set; }
 
-    [Option('r', "runtime-version", HelpText = "The version of the .NET runtime to use")]
-    public string? RuntimeVersion { get; set; }
-
     [Option('d', "auto-download", HelpText = "Automatically download the dashboard if it's not installed")]
     public bool? AutoDownload { get; set; }
 

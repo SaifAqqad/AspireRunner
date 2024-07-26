@@ -50,10 +50,8 @@ var dashboardOptions = new AspireDashboardOptions
     },
     Runner = new RunnerOptions
     {
-        PipeOutput = false,
-        AutoDownload = arguments.AutoDownload ?? true,
         LaunchBrowser = arguments.LaunchBrowser,
-        RuntimeVersion = arguments.RuntimeVersion,
+        AutoDownload = arguments.AutoDownload ?? true,
         SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
     }
 };

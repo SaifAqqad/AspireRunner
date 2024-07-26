@@ -105,14 +105,6 @@ public sealed class RunnerOptions
     /// Automatically download the dashboard if the workload is not found.
     /// </summary>
     public bool AutoDownload { get; set; }
-
-    /// <summary>
-    /// The version of the dotnet runtime to use when downloading/running the dashboard.
-    /// </summary>
-    /// <example>
-    /// When setting the runtime version to 8.0, the latest 8.x version of the dashboard will be downloaded/used.
-    /// </example>
-    public string? RuntimeVersion { get; set; }
 }
 
 public enum FrontendAuthMode
