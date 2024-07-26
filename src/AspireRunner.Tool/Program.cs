@@ -34,19 +34,19 @@ if (!await dotnet.InitializeAsync())
     return ReturnCodes.DotnetCliError;
 }
 
-var protocol = arguments.UseHttps is true or null ? "https" : "http";
 var dashboardOptions = new AspireDashboardOptions
 {
     Frontend = new FrontendOptions
     {
-        EndpointUrls = $"{protocol}://localhost:{arguments.DashboardPort}",
-        AuthMode = arguments.UseAuth ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured
+        AuthMode = arguments.UseAuth ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
+        EndpointUrls = BuildLocalUrl(arguments.DashboardPort, arguments.DashboardHttps ?? arguments.UseHttps ?? true)
     },
     Otlp = new OtlpOptions
     {
-        EndpointUrl = $"{protocol}://localhost:{arguments.OtlpPort}",
+        PrimaryApiKey = arguments.OtlpKey,
+        EndpointUrl = BuildLocalUrl(arguments.OtlpPort, arguments.OtlpHttps ?? arguments.UseHttps ?? true),
         AuthMode = string.IsNullOrWhiteSpace(arguments.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey,
-        PrimaryApiKey = arguments.OtlpKey
+        HttpEndpointUrl = arguments.OtlpHttpPort != null ? BuildLocalUrl(arguments.OtlpHttpPort.Value, arguments.OtlpHttps is true or null) : null,
     },
     Runner = new RunnerOptions
     {
@@ -97,4 +97,10 @@ catch (Exception e)
 {
     logger.LogError("An error occurred while starting the Aspire Dashboard, {Error}", e.Message);
     return ReturnCodes.AspireDashboardError;
+}
+
+static string BuildLocalUrl(int port, bool secure)
+{
+    var protocol = secure ? "https" : "http";
+    return $"{protocol}://localhost:{port}";
 }
