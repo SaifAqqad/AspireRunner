@@ -4,9 +4,9 @@ namespace AspireRunner.Core;
 
 /// <summary>
 /// Configuration options used by the Aspire Dashboard.
-/// <see href="https://github.com/dotnet/aspire/tree/v8.0.0-preview.6.24214.1/src/Aspire.Dashboard/Configuration"/>
+/// <see href="https://github.com/dotnet/aspire/tree/v8.1.0/src/Aspire.Dashboard/Configuration"/>
 /// </summary>
-public class AspireDashboardOptions
+public sealed record AspireDashboardOptions
 {
     /// <summary>
     /// The application name to be displayed in the dashboard UI.
@@ -22,7 +22,7 @@ public class AspireDashboardOptions
     public TelemetryLimitOptions? TelemetryLimits { get; set; }
 }
 
-public class OtlpOptions
+public sealed record OtlpOptions
 {
     /// <summary>
     /// Specifies the primary API key. The API key can be any text, but a value with at least 128 bits of entropy is recommended. This value is required if auth mode is API key.
@@ -47,7 +47,7 @@ public class OtlpOptions
     public string EndpointUrl { get; set; } = "https://localhost:4317";
 }
 
-public sealed class FrontendOptions
+public sealed record FrontendOptions
 {
     /// <summary>
     /// One or more HTTP endpoints through which the dashboard frontend is served. The frontend endpoint is used to view the dashboard in a browser.
@@ -68,7 +68,7 @@ public sealed class FrontendOptions
     public string? BrowserToken { get; set; }
 }
 
-public sealed class TelemetryLimitOptions
+public sealed record TelemetryLimitOptions
 {
     public int MaxLogCount { get; set; } = 10_000;
 
@@ -83,7 +83,7 @@ public sealed class TelemetryLimitOptions
     public int MaxSpanEventCount { get; set; } = int.MaxValue;
 }
 
-public sealed class RunnerOptions
+public sealed record RunnerOptions
 {
     /// <summary>
     /// Pipe the output of the Aspire Dashboard process to the logger.
