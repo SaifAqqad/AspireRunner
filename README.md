@@ -9,9 +9,9 @@ The runner can be used as a [dotnet tool](./src/AspireRunner.Tool/README.md) or 
 > The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=windows&pivots=visual-studio), if it's installed.
 
 > [!IMPORTANT]
-> While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.
+> While the runner itself targets .NET 6 and later, the dashboard requires the .NET 8 runtime (or later) to run.
 >
-> Meaning that the runner can be used as part of a .NET 6 application, but you'll still need the .NET 8/9 runtime to run the dashboard.
+> Meaning that the runner can be used as part of a .NET 6 application, but you'll still need the .NET 8 runtime to run the dashboard.
 
 
 ## [AspireRunner.Tool](./src/AspireRunner.Tool/README.md)

@@ -8,8 +8,7 @@ The dashboard can display OpenTelemetry data (traces, metrics, and logs) from an
 
 ## Installation
 
-```bash
-# Install the AspireRunner tool
+```console
 dotnet tool install -g AspireRunner.Tool
 ```
 
@@ -19,30 +18,34 @@ dotnet tool install -g AspireRunner.Tool
 aspire-dashboard <options>
 
 Options:
-  -b, --browser            Launch the dashboard in the default browser
+  -b, --browser          Launch the dashboard in the default browser
 
-  -p, --port               (Default: 18888) The port the dashboard will be available on
+  -p, --port             (Default: 18888) The port the dashboard will be available on
 
-  -o, --otlp-port          (Default: 4317) The port the OTLP server will listen on
+  -a, --auth             Use browser token authentication for the dashboard
 
-  -k, --otlp-key           The API key to use for the OTLP server
+  -s, --https            (Default: true) Use HTTPS instead of HTTP, this applies to both the dashboard and the OTLP server
 
-  -s, --https              (Default: true) Use HTTPS instead of HTTP, this applies to both the dashboard and the OTLP server
+  --dashboard-https      Use HTTPS instead of HTTP for the dashboard
 
-  -a, --auth               Use browser token authentication for the dashboard
+  --otlp-port            (Default: 4317) The port the OTLP/gRPC server will listen on
 
-  -m, --multiple           Allow running multiple instances of the dashboard, if this isn't passed, existing instances will be replaced
+  --otlp-http-port       The port the OTLP/HTTP server will listen on, by default, only the gRPC server is started
 
-  -r, --runtime-version    The version of the .NET runtime to use
+  --otlp-key             The API key to use for the OTLP server
 
-  -d, --auto-download      (Default: true) Automatically download the dashboard if it's not installed
+  --otlp-https           Use HTTPS instead of HTTP for the OTLP/gRPC and OTLP/HTTP endpoints
 
-  -v, --Verbose            Enable verbose logging
+  -m, --multiple         Allow running multiple instances of the dashboard, if this isn't passed, existing instances will be replaced
 
-  --help                   Display this help screen.
+  -d, --auto-download    (Default: true) Automatically download the dashboard if it's not installed
 
-  --version                Display version information.
+  -v, --verbose          Enable verbose logging
+
+  --help                 Display this help screen.
+
+  --version              Display version information.
 ```
 
 > [!NOTE]
-> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=windows&pivots=visual-studio), if it's installed.
+> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli), if it's installed.

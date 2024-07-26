@@ -1,6 +1,6 @@
 ## AspireRunner.AspNetCore
 
-A library for running the Aspire Dashboard alongside ASP.NET Core apps (as a background service).
+A library for running the Aspire Dashboard alongside ASP.NET Core apps.
 
 The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any application, although this is intended to be used for local development only.
 
@@ -44,7 +44,7 @@ var app = builder.Build();
 ### Configuration
 
 The runner can be configured with the [`AspireDashboardOptions`](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/AspireDashboardOptions.cs) class, which
-contains a subset of the [options supported by the Aspire dashboard](https://github.com/dotnet/aspire/blob/v8.0.1/src/Aspire.Dashboard/Configuration/DashboardOptions.cs), but also
+contains a subset of the [options supported by the Aspire dashboard](https://github.com/dotnet/aspire/blob/v8.1.0/src/Aspire.Dashboard/Configuration/DashboardOptions.cs), but also
 has runner-specific options under the `Runner` property:
 
 - `PipeOutput` (bool): When enabled, the runner will pipe the output of the dashboard process to the logger.
@@ -55,5 +55,3 @@ has runner-specific options under the `Runner` property:
     2. `Ignore`: Disables checking for running instances of the Aspire Dashboard. Note that new instances will fail to start if an existing one is using the same port
     3. `ReplaceExisting`: Kills any existing instance before starting a new one.
 - `AutoDownload` (bool): When enabled, the runner will automatically download the dashboard if the Aspire workload is not found.
-- `RuntimeVersion` (string): The version of the .NET runtime to use when running the dashboard. (ex: When setting the runtime version to 8.0, the latest 8.x version of the
-  dashboard will be downloaded/used)
