@@ -34,7 +34,7 @@ var app = builder.Build();
 
 > [!NOTE]
 > The runner will prioritize using the dashboard bundled with
-> the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=windows&pivots=visual-studio), if it's installed.
+> the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli), if it's installed.
 
 > [!IMPORTANT]
 > While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.

@@ -6,7 +6,7 @@ metrics, and logs) from any application.
 The runner can be used as a [dotnet tool](./src/AspireRunner.Tool/README.md) or as part of an [ASP.NET Core application](./src/AspireRunner.AspNetCore/README.md), it will automatically download the dashboard if it's not installed, and will run and manage the dashboard process.
 
 > [!NOTE]
-> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=windows&pivots=visual-studio), if it's installed.
+> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli), if it's installed.
 
 > [!IMPORTANT]
 > While the runner itself targets .NET 6 and later, the dashboard requires the .NET 8 runtime (or later) to run.

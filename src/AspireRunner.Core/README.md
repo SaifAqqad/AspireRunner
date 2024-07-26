@@ -9,7 +9,7 @@ The dashboard can be used to display OpenTelemetry data (traces, metrics and log
 application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview))
 
 > [!NOTE]
-> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=windows&pivots=visual-studio), if it's installed.
+> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli), if it's installed.
 
 > [!IMPORTANT]
 > While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.
