@@ -4,7 +4,7 @@ namespace AspireRunner.Core.Helpers;
 
 public partial class DotnetCli
 {
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
     private static readonly Regex SdkOutputRegex = BuildSdkOutputRegex();
 
     private static readonly Regex RuntimeOutputRegex = BuildRuntimeOutputRegex();
