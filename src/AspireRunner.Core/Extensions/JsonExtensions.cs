@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 
 namespace AspireRunner.Core.Extensions;
 
@@ -24,11 +23,6 @@ internal static class JsonExtensions
             return;
         }
 
-        if (node.GetValueKind() is not (JsonValueKind.Object or JsonValueKind.Array))
-        {
-            obj[path] = node.DeepClone();
-        }
-
         switch (node)
         {
             case JsonObject jsonObj:
@@ -47,6 +41,11 @@ internal static class JsonExtensions
                     FlattenInto(jsonArray[i], obj, $"{path}[{i}]");
                 }
 
+                break;
+            }
+            default:
+            {
+                obj[path] = node.DeepClone();
                 break;
             }
         }
