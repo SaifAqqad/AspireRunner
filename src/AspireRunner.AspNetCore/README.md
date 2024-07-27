@@ -17,24 +17,40 @@ var builder = WebApplication.CreateBuilder(args);
 
 if (builder.Environment.IsDevelopment())
 {
+    // bind from configuration (appsettings.json, etc)
     builder.Services.AddAspireDashboard(config => {
-        config.Otlp.EndpointUrl = "https://localhost:33554";
-
-        // Or bind from configuration (appsettings.json, etc)
         builder.Configuration.GetSection("AspireDashboard").Bind(config);
+    });
+
+    // or pass an options instance
+    builder.Services.AddAspireDashboard(new AspireDashboardOptions
+    {
+        Frontend = new FrontendOptions
+        {
+            EndpointUrls = "https://localhost:5020"
+        },
+        Otlp = new OtlpOptions
+        {
+            EndpointUrl = "https://localhost:4317"
+        },
+        Runner = new RunnerOptions
+        {
+            AutoDownload = true
+        }
     });
 }
 
-//...
-
 var app = builder.Build();
 
-//...
+// ...
+
+await app.RunAsync();
 ```
 
 > [!NOTE]
 > The runner will prioritize using the dashboard bundled with
-> the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli), if it's installed.
+> the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli) if it's installed, otherwise, The runner will
+> download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
 
 > [!IMPORTANT]
 > While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.

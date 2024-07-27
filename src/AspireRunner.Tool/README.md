@@ -2,7 +2,8 @@
 
 A dotnet tool for downloading and running the standalone [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone)
 
-The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview)).
+The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any
+application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/overview)).
 
 [![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.Tool?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.Tool)](https://www.nuget.org/packages/AspireRunner.Tool)
 
@@ -14,7 +15,7 @@ dotnet tool install -g AspireRunner.Tool
 
 ## Usage
 
-```
+```console
 aspire-dashboard <options>
 
 Options:
@@ -48,4 +49,6 @@ Options:
 ```
 
 > [!NOTE]
-> The runner will prioritize using the dashboard bundled with the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli), if it's installed.
+> The runner will prioritize using the dashboard bundled with
+> the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli) if it's installed, otherwise, The runner will
+> download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
