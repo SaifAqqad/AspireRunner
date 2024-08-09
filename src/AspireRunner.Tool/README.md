@@ -29,7 +29,7 @@ Options:
 
   --dashboard-https      Use HTTPS instead of HTTP for the dashboard
 
-  --otlp-port            (Default: 4317) The port the OTLP/gRPC server will listen on
+  --otlp-port            (Default: 4317) The port the OTLP/gRPC server will listen on, can be disabled by passing 0
 
   --otlp-http-port       The port the OTLP/HTTP server will listen on, by default, only the gRPC server is started
 

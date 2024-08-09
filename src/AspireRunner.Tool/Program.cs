@@ -44,9 +44,9 @@ var dashboardOptions = new AspireDashboardOptions
     Otlp = new OtlpOptions
     {
         PrimaryApiKey = arguments.OtlpKey,
-        EndpointUrl = BuildLocalUrl(arguments.OtlpPort, arguments.OtlpHttps ?? arguments.UseHttps ?? true),
         AuthMode = string.IsNullOrWhiteSpace(arguments.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey,
-        HttpEndpointUrl = arguments.OtlpHttpPort != null ? BuildLocalUrl(arguments.OtlpHttpPort.Value, arguments.OtlpHttps is true or null) : null,
+        EndpointUrl = arguments.OtlpPort is > 0 and <= 65535 ? BuildLocalUrl(arguments.OtlpPort, arguments.OtlpHttps ?? arguments.UseHttps ?? true) : null,
+        HttpEndpointUrl = arguments.OtlpHttpPort is > 0 and <= 65535 ? BuildLocalUrl(arguments.OtlpHttpPort.Value, arguments.OtlpHttps ?? arguments.UseHttps ?? true) : null
     },
     Runner = new RunnerOptions
     {
