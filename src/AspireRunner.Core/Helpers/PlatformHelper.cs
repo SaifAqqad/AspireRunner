@@ -86,17 +86,6 @@ internal static class PlatformHelper
     /// </summary>
     /// <remarks>
     /// On Linux, the method will try to find a suitable URL opener from the system's <c>PATH</c>.
-    /// <br/>
-    /// The following URL openers are checked in order:
-    /// <list type="number">
-    /// <item><description>sensible-browser</description></item>
-    /// <item><description>x-www-browser</description></item>
-    /// <item><description>xdg-open</description></item>
-    /// <item><description>gnome-open</description></item>
-    /// <item><description>kde-open</description></item>
-    /// <item><description>exo-open</description></item>
-    /// <item><description>open</description></item>
-    /// </list>
     /// </remarks>
     public static (string Executable, string[] Arguments)? GetUrlOpener(string url)
     {
@@ -120,7 +109,8 @@ internal static class PlatformHelper
         var envPaths = GetPaths();
         _linuxUrlOpener = LinuxUrlOpeners
             .SelectMany(o => envPaths.Select(p => (Name: o, Path: Path.Combine(p, o))))
-            .FirstOrDefault(p => File.Exists(p.Path)).Name;
+            .FirstOrDefault(p => File.Exists(p.Path))
+            .Name;
 
         if (_linuxUrlOpener is null)
         {

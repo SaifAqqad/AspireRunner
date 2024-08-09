@@ -146,5 +146,5 @@ public enum SingleInstanceHandling
     /// <summary>
     /// Kills the existing instance and starts a new one.
     /// </summary>
-    ReplaceExisting = 2,
+    ReplaceExisting = 2
 }

@@ -82,7 +82,7 @@ internal static class ProcessHelper
             UseShellExecute = false,
             RedirectStandardError = true,
             RedirectStandardOutput = true,
-            WorkingDirectory = workingDir ?? string.Empty,
+            WorkingDirectory = workingDir ?? string.Empty
         };
 
         foreach (var argument in arguments)
