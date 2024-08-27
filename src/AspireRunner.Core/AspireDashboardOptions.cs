@@ -11,7 +11,7 @@ public sealed record AspireDashboardOptions
     /// <summary>
     /// The application name to be displayed in the dashboard UI.
     /// </summary>
-    public string ApplicationName { get; set; } = "Aspire";
+    public string ApplicationName { get; set; } = "AspireRunner";
 
     public OtlpOptions Otlp { get; set; } = new();
 
@@ -53,7 +53,7 @@ public sealed record OtlpOptions
     /// </summary>
     /// <remarks>
     /// Requires Aspire Dashboard v8.1.0 or later.
-    /// https://github.com/dotnet/aspire/releases/tag/v8.1.0
+    /// <see href="https://github.com/dotnet/aspire/releases/tag/v8.1.0"/>
     /// </remarks>
     public string? HttpEndpointUrl { get; set; }
 }
@@ -73,8 +73,6 @@ public sealed record FrontendOptions
 
     /// <summary>
     /// Specifies the browser token. If the browser token isn't specified, then the dashboard will generate one.
-    /// Tooling that wants to automate logging in with browser token authentication can specify a token and open a browser with the token in the query string.
-    /// A new token should be generated each time the dashboard is launched.
     /// </summary>
     public string? BrowserToken { get; set; }
 }
@@ -102,7 +100,7 @@ public sealed record RunnerOptions
     public bool PipeOutput { get; set; }
 
     /// <summary>
-    /// Automatically launch the browser when the Aspire Dashboard starts.
+    /// Automatically launch the dashboard in the default browser.
     /// </summary>
     public bool LaunchBrowser { get; set; }
 
@@ -139,6 +137,7 @@ public enum SingleInstanceHandling
 
     /// <summary>
     /// Disables checking for running instances of the Aspire Dashboard.
+    /// <br/>
     /// New instances will fail to start if an existing one is using the same port
     /// </summary>
     Ignore = 1,

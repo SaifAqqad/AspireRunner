@@ -5,7 +5,11 @@ using Microsoft.Extensions.Options;
 
 namespace AspireRunner.AspNetCore;
 
-public class AspireDashboardService(ILogger<AspireDashboardService> logger, AspireDashboardManager dashboardManager, IOptions<AspireDashboardOptions> options, ILoggerFactory loggerFactory) : IHostedService
+public class AspireDashboardService(
+    ILoggerFactory loggerFactory,
+    ILogger<AspireDashboardService> logger,
+    IOptions<AspireDashboardOptions> options,
+    AspireDashboardManager dashboardManager) : IHostedService
 {
     private AspireDashboard? _aspireDashboard;
 

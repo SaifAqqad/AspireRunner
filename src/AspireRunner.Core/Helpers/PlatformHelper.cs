@@ -78,7 +78,7 @@ internal static class PlatformHelper
             return false;
         }
 
-        return (_isWsl = uname.Output.Contains("-microsoft-standard", StringComparison.OrdinalIgnoreCase)).Value;
+        return (_isWsl = uname.Output.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase)).Value;
     }
 
     /// <summary>
@@ -138,7 +138,7 @@ internal static class PlatformHelper
         if (IsWsl())
         {
             // exclude windows paths to avoid conflicts
-            paths = paths.Where(p => !p.Contains("/mnt/c/")).ToArray();
+            paths = paths.Where(p => !p.StartsWith("/mnt/c/")).ToArray();
         }
 
         return paths;
