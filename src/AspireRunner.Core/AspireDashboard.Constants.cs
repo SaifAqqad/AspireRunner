@@ -2,8 +2,6 @@
 
 public partial class AspireDashboard
 {
-    internal const string WorkloadId = "aspire";
-
     internal const string SdkName = "Aspire.Dashboard.Sdk";
 
     internal const string DllName = "Aspire.Dashboard.dll";

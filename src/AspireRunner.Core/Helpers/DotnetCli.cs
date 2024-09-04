@@ -1,107 +1,28 @@
 ﻿using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace AspireRunner.Core.Helpers;
 
-public partial class DotnetCli(ILogger<DotnetCli> logger)
+public partial class DotnetCli
 {
     public const string DataFolderName = ".dotnet";
 
     public static readonly string ExecutableName = PlatformHelper.AsExecutable("dotnet");
 
-    public string CliPath { get; private set; } = null!;
+    private readonly ILogger<DotnetCli> _logger;
 
-    public string DataPath { get; private set; } = null!;
+    public string CliPath { get; }
 
-    public string? SdkPath { get; private set; }
+    public string DataPath { get; }
 
-    public string Executable { get; private set; } = null!;
+    public string Executable { get; }
 
-    public bool Initialized { get; private set; }
-
-    /// <summary>
-    /// Initializes the <see cref="DotnetCli"/> instance.
-    /// </summary>
-    /// <returns>
-    /// True if the initialization was successful, false otherwise.
-    /// </returns>
-    public async Task<bool> InitializeAsync()
+    public DotnetCli(ILogger<DotnetCli> logger)
     {
-        if (Initialized)
-        {
-            return true;
-        }
-
-        try
-        {
-            CliPath = GetCliPath();
-            Executable = Path.Combine(CliPath, ExecutableName);
-            Initialized = true;
-
-            DataPath = GetOrCreateDataPath();
-            SdkPath = await GetSdkPathAsync();
-            return Initialized;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError("Failed to initialize DotnetCli, {Error}", ex.Message);
-            return Initialized = false;
-        }
-    }
-
-    /// <summary>
-    /// Returns all the dotnet packs folders available.
-    /// </summary>
-    /// <returns>An array containing the paths of all the dotnet packs folders available.</returns>
-    public string[] GetPacksFolders()
-    {
-        if (!Initialized)
-        {
-            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
-        }
-
-        var folders = new List<string>();
-
-        if (SdkPath != null)
-        {
-            var sdkPacksFolder = Path.Combine(SdkPath, "packs");
-            if (Directory.Exists(sdkPacksFolder))
-            {
-                folders.Add(sdkPacksFolder);
-            }
-        }
-
-        var dataPacksFolder = Path.Combine(DataPath, "packs");
-        if (Directory.Exists(dataPacksFolder))
-        {
-            folders.Add(dataPacksFolder);
-        }
-
-        return folders.ToArray();
-    }
-
-    /// <summary>
-    /// Runs <c>dotnet workload list</c> and parses the output to get all installed workloads.
-    /// </summary>
-    /// <returns>An array containing all installed workloads.</returns>
-    public async Task<string[]> GetInstalledWorkloadsAsync()
-    {
-        if (!Initialized)
-        {
-            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
-        }
-
-        var (workloadsOutput, _) = await ProcessHelper.GetAsync(Executable, ["workload", "list"], workingDir: CliPath);
-        var workloadsMatch = TableContentRegex.Match(workloadsOutput);
-        if (!workloadsMatch.Success)
-        {
-            return [];
-        }
-
-        return workloadsMatch.Value
-            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(row => TableColumnSeperatorRegex.Split(row, 3)[0])
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .ToArray();
+        _logger = logger;
+        CliPath = GetCliPath();
+        DataPath = GetOrCreateDataPath();
+        Executable = Path.Combine(CliPath, ExecutableName);
     }
 
     /// <summary>
@@ -110,11 +31,6 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
     /// <returns>A tuple array containing the name and version of each installed runtime</returns>
     public async Task<(string Name, Version Version)[]> GetInstalledRuntimesAsync()
     {
-        if (!Initialized)
-        {
-            throw new InvalidOperationException("The DotnetCli instance has not been initialized.");
-        }
-
         var (runtimesOutput, _) = await ProcessHelper.GetAsync(Executable, ["--list-runtimes"], workingDir: CliPath);
         if (string.IsNullOrWhiteSpace(runtimesOutput))
         {
@@ -129,30 +45,6 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
     }
 
     /// <summary>
-    /// Returns the path of the latest SDK installed.
-    /// </summary>
-    private async Task<string?> GetSdkPathAsync()
-    {
-        var (sdksOutput, _) = await ProcessHelper.GetAsync(Executable, ["--list-sdks"], workingDir: CliPath);
-        var sdks = sdksOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => SdkOutputRegex.Match(s))
-            .Where(m => m.Success)
-            .Select(m => (Version: m.Groups[1].Value, Path: m.Groups[2].Value))
-            .ToArray();
-
-        if (sdks.Length == 0)
-        {
-            return null;
-        }
-
-        var latestSdk = sdks
-            .Where(s => Version.TryParse(s.Version, out _))
-            .MaxBy(s => Version.Parse(s.Version));
-
-        return Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(latestSdk.Path));
-    }
-
-    /// <summary>
     /// Ensures the existence of the dotnet data folder (<c>~/.dotnet</c>.) and returns its path.
     /// </summary>
     /// <returns>The path to the dotnet data folder.</returns>
@@ -164,7 +56,7 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
             return dataFolderPath;
         }
 
-        logger.LogTrace("Creating dotnet data folder at {Path}", dataFolderPath);
+        _logger.LogTrace("Creating dotnet data folder at {Path}", dataFolderPath);
         Directory.CreateDirectory(dataFolderPath);
         return dataFolderPath;
     }
@@ -180,7 +72,7 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
         var dotnetPath = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
         if (!string.IsNullOrWhiteSpace(dotnetPath) && File.Exists(dotnetPath))
         {
-            logger.LogTrace("Using dotnet CLI from DOTNET_HOST_PATH environment variable");
+            _logger.LogTrace("Using dotnet CLI from DOTNET_HOST_PATH environment variable");
             return Path.GetDirectoryName(dotnetPath)!;
         }
 
@@ -190,11 +82,24 @@ public partial class DotnetCli(ILogger<DotnetCli> logger)
             dotnetPath = Path.Combine(path, ExecutableName);
             if (File.Exists(dotnetPath))
             {
-                logger.LogTrace("Using dotnet CLI from PATH environment variable, {Path}", dotnetPath);
+                _logger.LogTrace("Using dotnet CLI from PATH environment variable, {Path}", dotnetPath);
                 return path;
             }
         }
 
         throw new ApplicationException("The dotnet CLI was not found in PATH or DOTNET_HOST_PATH environment variables");
     }
+
+    #region Regex
+
+#if NET7_0_OR_GREATER
+    private static readonly Regex RuntimeOutputRegex = BuildRuntimeOutputRegex();
+
+    [GeneratedRegex(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled)]
+    private static partial Regex BuildRuntimeOutputRegex();
+#else
+    private static readonly Regex RuntimeOutputRegex = new(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled);
+#endif
+
+    #endregion
 }

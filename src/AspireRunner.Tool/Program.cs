@@ -26,11 +26,16 @@ var arguments = argsResult.Value;
 logger.Verbose = arguments.Verbose;
 logger.LogDebug("Arguments: {@Arguments}", arguments);
 
+DotnetCli dotnet;
 var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper>(arguments.Verbose));
-var dotnet = new DotnetCli(new ConsoleLogger<DotnetCli>(arguments.Verbose));
-if (!await dotnet.InitializeAsync())
+
+try
 {
-    logger.LogError("Could not find the dotnet CLI, make sure it is installed and available in the PATH");
+    dotnet = new DotnetCli(new ConsoleLogger<DotnetCli>(arguments.Verbose));
+}
+catch (Exception e)
+{
+    logger.LogError("An error occurred while initializing the dotnet CLI, {Error}", e.Message);
     return ReturnCodes.DotnetCliError;
 }
 
@@ -62,10 +67,8 @@ if (logger.IsEnabled(LogLevel.Debug))
 }
 
 var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
-await aspireDashboardManager.InitializeAsync();
 
-var (isInstalled, _) = await aspireDashboardManager.IsInstalledAsync();
-if (!isInstalled && !dashboardOptions.Runner.AutoDownload)
+if (!aspireDashboardManager.IsInstalled() && !dashboardOptions.Runner.AutoDownload)
 {
     logger.LogError($"""
                      The Aspire Dashboard is not installed.

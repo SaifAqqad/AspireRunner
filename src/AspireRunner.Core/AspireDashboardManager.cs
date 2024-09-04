@@ -11,46 +11,25 @@ public class AspireDashboardManager
     private readonly NugetHelper _nugetHelper;
     private readonly ILogger<AspireDashboardManager> _logger;
 
-    private bool _initialized;
-    private string _runnerFolder = null!;
-    private string _nugetPackageName = null!;
+    private readonly string _runnerFolder;
+    private readonly string _nugetPackageName;
 
     public AspireDashboardManager(DotnetCli dotnetCli, NugetHelper nugetHelper, ILogger<AspireDashboardManager> logger)
     {
         _logger = logger;
         _dotnetCli = dotnetCli;
         _nugetHelper = nugetHelper;
-    }
-
-    public async Task<bool> InitializeAsync()
-    {
-        if (_initialized)
-        {
-            return true;
-        }
-
-        if (!await _dotnetCli.InitializeAsync())
-        {
-            return false;
-        }
-
         _nugetPackageName = $"{AspireDashboard.SdkName}.{PlatformHelper.Rid()}";
         _runnerFolder = Path.Combine(_dotnetCli.DataPath, AspireDashboard.DataFolder);
+
         if (!Directory.Exists(_runnerFolder))
         {
             Directory.CreateDirectory(_runnerFolder);
         }
-
-        return _initialized = true;
     }
 
     public async Task<AspireDashboard> GetDashboardAsync(AspireDashboardOptions options, ILogger<AspireDashboard>? logger = null)
     {
-        if (!_initialized)
-        {
-            throw new InvalidOperationException($"{nameof(AspireDashboardManager)} must be initialized before calling this method.");
-        }
-
         var installedRuntimes = (await _dotnetCli.GetInstalledRuntimesAsync())
             .Where(r => r.Name is AspireDashboard.AspRuntimeName && r.Version >= AspireDashboard.MinimumRuntimeVersion)
             .Select(r => r.Version)
@@ -62,8 +41,7 @@ public class AspireDashboardManager
             throw new ApplicationException($"The dashboard requires version '{AspireDashboard.MinimumRuntimeVersion}' or newer of the '{AspireDashboard.AspRuntimeName}' runtime");
         }
 
-        var (isInstalled, isWorkload) = await IsInstalledAsync();
-        if (!isInstalled)
+        if (!IsInstalled())
         {
             if (!options.Runner.AutoDownload)
             {
@@ -81,14 +59,13 @@ public class AspireDashboardManager
 
             _logger.LogInformation("Successfully downloaded the Aspire Dashboard (version {Version})", downloadedVersion);
         }
-        else if (!isWorkload && options.Runner.AutoDownload)
+        else if (options.Runner.AutoDownload)
         {
             // We are using the runner-managed dashboards, so we can try to update
             await TryUpdateAsync(installedRuntimes);
         }
 
-        _logger.LogTrace("Aspire Installation Source: {Source}", isWorkload ? "Workload" : "NuGet");
-        var installedDashboard = GetLatestInstalledVersion(isWorkload);
+        var installedDashboard = GetLatestInstalledVersion();
         if (installedDashboard == null)
         {
             throw new ApplicationException("Failed to locate the Aspire Dashboard installation path");
@@ -100,52 +77,27 @@ public class AspireDashboardManager
         return new AspireDashboard(_dotnetCli, version, path, options, logger ?? new NullLogger<AspireDashboard>());
     }
 
-    public async Task<(bool Installed, bool Workload)> IsInstalledAsync()
+    public bool IsInstalled()
     {
-        if (!_initialized)
-        {
-            throw new InvalidOperationException($"{nameof(AspireDashboardManager)} must be initialized before calling this method.");
-        }
-
-        if (_dotnetCli.SdkPath != null)
-        {
-            var workloads = await _dotnetCli.GetInstalledWorkloadsAsync();
-            if (workloads.Contains(AspireDashboard.WorkloadId))
-            {
-                return (true, true);
-            }
-        }
-
         var downloadsFolder = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder);
-        return (
-            Installed: Directory.Exists(downloadsFolder) && Directory.EnumerateDirectories(downloadsFolder, "*.*").Any(),
-            Workload: false
-        );
+        return Directory.Exists(downloadsFolder) && Directory.EnumerateDirectories(downloadsFolder, "*.*").Any();
     }
 
     public async Task<Version?> InstallAsync(Version[] installedRuntimes, Version? version = null)
     {
-        if (!_initialized)
-        {
-            throw new InvalidOperationException($"{nameof(AspireDashboardManager)} must be initialized before calling this method.");
-        }
-
         if (version == null)
         {
             version = await FetchLatestVersionAsync(installedRuntimes);
         }
 
-        var downloadSucceesful = await _nugetHelper.DownloadPackageAsync(_nugetPackageName, version, Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder, version.ToString()));
+        var downloadSucceesful =
+            await _nugetHelper.DownloadPackageAsync(_nugetPackageName, version, Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder, version.ToString()));
+
         return downloadSucceesful ? version : null;
     }
 
     public async Task TryUpdateAsync(Version[] installedRuntimes, Version? preferredVersion = null)
     {
-        if (!_initialized)
-        {
-            throw new InvalidOperationException($"{nameof(AspireDashboardManager)} must be initialized before calling this method.");
-        }
-
         try
         {
             var availableVersions = await _nugetHelper.GetPackageVersionsAsync(_nugetPackageName);
@@ -195,16 +147,11 @@ public class AspireDashboardManager
         }
     }
 
-    private (Version Version, string Path)? GetLatestInstalledVersion(bool workload)
+    private (Version Version, string Path)? GetLatestInstalledVersion()
     {
+        var dashboardsFolder = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder);
         try
         {
-            var dashboardsFolder = workload ?
-                _dotnetCli.GetPacksFolders()
-                    .SelectMany(Directory.GetDirectories)
-                    .First(dir => dir.Contains(AspireDashboard.SdkName))
-                : Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder);
-
             var installedVersions = Directory.GetDirectories(dashboardsFolder)
                 .Select(d =>
                 {

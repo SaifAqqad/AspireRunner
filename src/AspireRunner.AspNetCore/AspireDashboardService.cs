@@ -22,12 +22,6 @@ public class AspireDashboardService(
             {
                 logger.LogInformation("Starting the Aspire Dashboard Service");
 
-                if (!await dashboardManager.InitializeAsync())
-                {
-                    logger.LogError("Failed to initialize the Aspire Dashboard Manager");
-                    return;
-                }
-
                 _aspireDashboard = await dashboardManager.GetDashboardAsync(options.Value, loggerFactory.CreateLogger<AspireDashboard>());
                 logger.LogInformation("Found Aspire Dashboard version {Version}", _aspireDashboard.Version);
 
