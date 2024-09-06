@@ -111,9 +111,14 @@ public sealed record RunnerOptions
     public SingleInstanceHandling SingleInstanceHandling { get; set; } = SingleInstanceHandling.WarnAndExit;
 
     /// <summary>
-    /// Automatically download the dashboard if the workload is not found.
+    /// Automatically update the dashboard to the latest version.
     /// </summary>
-    public bool AutoDownload { get; set; }
+    public bool AutoUpdate { get; set; } = true;
+
+    /// <summary>
+    /// Specifies the preferred version of the dashboard to run/download.
+    /// </summary>
+    public string? PreferredVersion { get; set; }
 }
 
 public enum FrontendAuthMode

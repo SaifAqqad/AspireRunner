@@ -56,7 +56,8 @@ var dashboardOptions = new AspireDashboardOptions
     Runner = new RunnerOptions
     {
         LaunchBrowser = arguments.LaunchBrowser,
-        AutoDownload = arguments.AutoDownload ?? true,
+        AutoUpdate = arguments.AutoUpdate ?? true,
+        PreferredVersion = arguments.PreferredVersion,
         SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
     }
 };
@@ -67,18 +68,6 @@ if (logger.IsEnabled(LogLevel.Debug))
 }
 
 var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
-
-if (!aspireDashboardManager.IsInstalled() && !dashboardOptions.Runner.AutoDownload)
-{
-    logger.LogError($"""
-                     The Aspire Dashboard is not installed.
-
-                     Pass the option {Bold("--auto-download")} to automatically download and install the Aspire Dashboard.
-                     Alternatively, Run '{Bold("dotnet workload install aspire")}' to install the aspire workload through the dotnet CLI.
-                     """);
-
-    return ReturnCodes.AspireInstallationError;
-}
 
 try
 {
