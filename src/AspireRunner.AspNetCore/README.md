@@ -48,9 +48,7 @@ await app.RunAsync();
 ```
 
 > [!NOTE]
-> The runner will prioritize using the dashboard bundled with
-> the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli) if it's installed, otherwise, The runner will
-> download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
+> The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
 
 > [!IMPORTANT]
 > While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.
@@ -70,4 +68,6 @@ has runner-specific options under the `Runner` property:
     1. `WarnAndExit`: Logs a warning and exits if an existing instance is found.
     2. `Ignore`: Disables checking for running instances of the Aspire Dashboard. Note that new instances will fail to start if an existing one is using the same port
     3. `ReplaceExisting`: Kills any existing instance before starting a new one.
-- `AutoDownload` (bool): When enabled, the runner will automatically download the dashboard if the Aspire workload is not found.
+- `AutoUpdate` (bool): When enabled, the runner will automatically update the dashboard to the latest version on startup.
+- `PreferredVersion` (string): The version of the dashboard to download/run. If not specified or invalid, the latest 
+  version will be used.

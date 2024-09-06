@@ -25,9 +25,9 @@ Options:
 
   -a, --auth             Use browser token authentication for the dashboard
 
-  -s, --https            (Default: true) Use HTTPS instead of HTTP, this applies to both the dashboard and the OTLP server
+  -s, --https            Use HTTPS instead of HTTP, this applies to both the dashboard and the OTLP server, Enabled by default
 
-  --dashboard-https      Use HTTPS instead of HTTP for the dashboard
+  --dashboard-https      Use HTTPS instead of HTTP for the dashboard, overrides the global HTTPS option
 
   --otlp-port            (Default: 4317) The port the OTLP/gRPC server will listen on, can be disabled by passing 0
 
@@ -35,11 +35,13 @@ Options:
 
   --otlp-key             The API key to use for the OTLP server
 
-  --otlp-https           Use HTTPS instead of HTTP for the OTLP/gRPC and OTLP/HTTP endpoints
+  --otlp-https           Use HTTPS instead of HTTP for the OTLP/gRPC and OTLP/HTTP endpoints, overrides the global HTTPS option
 
   -m, --multiple         Allow running multiple instances of the dashboard, if this isn't passed, existing instances will be replaced
 
-  -d, --auto-download    (Default: true) Automatically download the dashboard if it's not installed
+  --auto-update          Automatically update the dashboard to the latest version, Enabled by default
+
+  --dashboard-version    The preferred version of the dashboard to use/download, will fallback to the latest version if it's invalid
 
   -v, --verbose          Enable verbose logging
 
@@ -49,6 +51,4 @@ Options:
 ```
 
 > [!NOTE]
-> The runner will prioritize using the dashboard bundled with
-> the [Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/setup-tooling?tabs=linux&pivots=dotnet-cli) if it's installed, otherwise, The runner will
-> download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
+> The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
