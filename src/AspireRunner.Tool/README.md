@@ -9,13 +9,13 @@ application ([more info](https://learn.microsoft.com/en-us/dotnet/aspire/fundame
 
 ## Installation
 
-```console
+```bash
 dotnet tool install -g AspireRunner.Tool
 ```
 
 ## Usage
 
-```console
+```bash
 aspire-dashboard <options>
 
 Options:

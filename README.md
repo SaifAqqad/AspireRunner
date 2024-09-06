@@ -14,7 +14,7 @@ Provides a quick and easy to use CLI for downloading and running the Dashboard
 
 ### Installation
 
-```console
+```bash
 dotnet tool install -g AspireRunner.Tool
 ```
 
