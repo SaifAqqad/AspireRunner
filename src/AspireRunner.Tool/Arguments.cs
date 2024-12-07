@@ -31,6 +31,15 @@ public record Arguments
     [Option("otlp-https", HelpText = "Use HTTPS instead of HTTP for the OTLP/gRPC and OTLP/HTTP endpoints, overrides the global HTTPS option")]
     public bool? OtlpHttps { get; set; }
 
+    [Option("allow-browsers", HelpText = "Shorthand for enabling browser telemetry, this will enable the OTLP/HTTP endpoint (default port 4318) and configure cors-origins to the passed value or *")]
+    public string? AllowBrowserTelemetry { get; set; }
+
+    [Option("cors-origins", HelpText = "The allowed origins for CORS requests, separated by a comma, wildcard (*) can be used to allow any domain")]
+    public string? CorsAllowedOrigins { get; set; }
+
+    [Option("cors-headers", HelpText = "The allowed headers for CORS requests, separated by a comma")]
+    public string? CorsAllowedHeaders { get; set; }
+
     [Option('m', "multiple", HelpText = "Allow running multiple instances of the dashboard, if this isn't passed, existing instances will be replaced")]
     public bool AllowMultipleInstances { get; set; }
 

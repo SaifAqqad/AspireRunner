@@ -1,4 +1,5 @@
 ﻿using AspireRunner.Core;
+using AspireRunner.Core.Extensions;
 using AspireRunner.Core.Helpers;
 using AspireRunner.Tool;
 using CommandLine;
@@ -26,9 +27,9 @@ var arguments = argsResult.Value;
 logger.Verbose = arguments.Verbose;
 logger.LogDebug("Arguments: {@Arguments}", arguments);
 
-DotnetCli dotnet;
 var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper>(arguments.Verbose));
 
+DotnetCli dotnet;
 try
 {
     dotnet = new DotnetCli(new ConsoleLogger<DotnetCli>(arguments.Verbose));
@@ -39,33 +40,8 @@ catch (Exception e)
     return ReturnCodes.DotnetCliError;
 }
 
-var dashboardOptions = new AspireDashboardOptions
-{
-    Frontend = new FrontendOptions
-    {
-        AuthMode = arguments.UseAuth ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
-        EndpointUrls = BuildLocalUrl(arguments.DashboardPort, arguments.DashboardHttps ?? arguments.UseHttps ?? true)
-    },
-    Otlp = new OtlpOptions
-    {
-        PrimaryApiKey = arguments.OtlpKey,
-        AuthMode = string.IsNullOrWhiteSpace(arguments.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey,
-        EndpointUrl = arguments.OtlpPort is > 0 and <= 65535 ? BuildLocalUrl(arguments.OtlpPort, arguments.OtlpHttps ?? arguments.UseHttps ?? true) : null,
-        HttpEndpointUrl = arguments.OtlpHttpPort is > 0 and <= 65535 ? BuildLocalUrl(arguments.OtlpHttpPort.Value, arguments.OtlpHttps ?? arguments.UseHttps ?? true) : null
-    },
-    Runner = new RunnerOptions
-    {
-        LaunchBrowser = arguments.LaunchBrowser,
-        AutoUpdate = arguments.AutoUpdate ?? true,
-        PreferredVersion = arguments.PreferredVersion,
-        SingleInstanceHandling = arguments.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
-    }
-};
-
-if (logger.IsEnabled(LogLevel.Debug))
-{
-    logger.LogDebug("Dashboard options: {@DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
-}
+var dashboardOptions = BuildOptions(arguments);
+logger.LogDebug("Dashboard options: {DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
 
 var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
 
@@ -91,8 +67,49 @@ catch (Exception e)
     return ReturnCodes.AspireDashboardError;
 }
 
-static string BuildLocalUrl(int port, bool secure)
+AspireDashboardOptions BuildOptions(Arguments args)
 {
-    var protocol = secure ? "https" : "http";
-    return $"{protocol}://localhost:{port}";
+    var useHttps = args.OtlpHttps ?? args.UseHttps ?? true;
+    var browserTelemetryEnabled = !string.IsNullOrWhiteSpace(args.AllowBrowserTelemetry);
+    var corsConfigured = !string.IsNullOrWhiteSpace(args.CorsAllowedOrigins) || !string.IsNullOrWhiteSpace(args.CorsAllowedHeaders);
+
+    var aspireDashboardOptions = new AspireDashboardOptions
+    {
+        Frontend = new FrontendOptions
+        {
+            AuthMode = args.UseAuth ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
+            EndpointUrls = OptionsExtensions.BuildLocalUrl(args.DashboardPort, args.DashboardHttps ?? args.UseHttps ?? true)
+        },
+        Otlp = new OtlpOptions
+        {
+            PrimaryApiKey = args.OtlpKey,
+            Cors = browserTelemetryEnabled || corsConfigured ? new OtlpCorsOptions() : null,
+            AuthMode = string.IsNullOrWhiteSpace(args.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey
+        },
+        Runner = new RunnerOptions
+        {
+            LaunchBrowser = args.LaunchBrowser,
+            AutoUpdate = args.AutoUpdate ?? true,
+            PreferredVersion = args.PreferredVersion,
+            SingleInstanceHandling = args.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
+        }
+    };
+
+    if (args.OtlpPort is > 0 and <= 65535)
+    {
+        aspireDashboardOptions.Otlp.GrpcEndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpPort, useHttps);
+    }
+
+    if (args.OtlpHttpPort is > 0 and <= 65535 || browserTelemetryEnabled)
+    {
+        aspireDashboardOptions.Otlp.HttpEndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpHttpPort ?? OtlpOptions.DefaultOtlpHttpPort, useHttps);
+    }
+
+    if (aspireDashboardOptions.Otlp.Cors is not null)
+    {
+        aspireDashboardOptions.Otlp.Cors.AllowedHeaders = args.CorsAllowedHeaders;
+        aspireDashboardOptions.Otlp.Cors.AllowedOrigins = args.CorsAllowedOrigins ?? args.AllowBrowserTelemetry ?? "*";
+    }
+
+    return aspireDashboardOptions;
 }

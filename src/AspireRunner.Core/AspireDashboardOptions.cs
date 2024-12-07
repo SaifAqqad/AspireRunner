@@ -4,7 +4,7 @@ namespace AspireRunner.Core;
 
 /// <summary>
 /// Configuration options used by the Aspire Dashboard.
-/// <see href="https://github.com/dotnet/aspire/tree/v8.1.0/src/Aspire.Dashboard/Configuration"/>
+/// <see href="https://github.com/dotnet/aspire/tree/v9.0.0/src/Aspire.Dashboard/Configuration">Aspire.Dashboard/Configuration</see>
 /// </summary>
 public sealed record AspireDashboardOptions
 {
@@ -24,8 +24,9 @@ public sealed record AspireDashboardOptions
 
 public sealed record OtlpOptions
 {
-    internal const string DefaultOtlpEndpointUrl = "http://localhost:4317";
-    
+    public const int DefaultOtlpGrpcPort = 4317;
+    public const int DefaultOtlpHttpPort = 4318;
+
     /// <summary>
     /// Specifies the primary API key. The API key can be any text, but a value with at least 128 bits of entropy is recommended. This value is required if auth mode is API key.
     /// </summary>
@@ -46,16 +47,33 @@ public sealed record OtlpOptions
     /// <summary>
     /// The OTLP/gRPC endpoint. This endpoint hosts an OTLP service to receive telemetry.
     /// </summary>
-    public string? EndpointUrl { get; set; }
+    public string? GrpcEndpointUrl { get; set; }
 
     /// <summary>
     /// The OTLP/HTTP endpoint. This endpoint hosts an OTLP service to receive telemetry. OTLP/gRPC and OTLP/HTTP endpoints can be used simultaneously.
     /// </summary>
-    /// <remarks>
-    /// Requires Aspire Dashboard v8.1.0 or later.
-    /// <see href="https://github.com/dotnet/aspire/releases/tag/v8.1.0"/>
-    /// </remarks>
     public string? HttpEndpointUrl { get; set; }
+
+    /// <summary>
+    /// The CORS configuration for the OTLP/HTTP endpoint.
+    /// This must be configured to allow browsers to send telemetry data to the OTLP/HTTP endpoint.
+    /// <br/>
+    /// <see href="https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/enable-browser-telemetry">Enable browser telemetry</see>
+    /// </summary>
+    public OtlpCorsOptions? Cors { get; set; }
+}
+
+public sealed record OtlpCorsOptions
+{
+    /// <summary>
+    /// Specifies the allowed origins for CORS. The value is a comma-delimited string and can include the * wildcard to allow any domain
+    /// </summary>
+    public string? AllowedOrigins { get; set; }
+
+    /// <summary>
+    /// A comma-delimited string representing the allowed headers for CORS
+    /// </summary>
+    public string? AllowedHeaders { get; set; }
 }
 
 public sealed record FrontendOptions

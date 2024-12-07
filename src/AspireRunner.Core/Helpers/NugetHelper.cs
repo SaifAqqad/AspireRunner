@@ -29,18 +29,30 @@ public class NugetHelper
         _repository = Repository.Factory.GetCoreV3(repoUrl);
     }
 
-    public async Task<Version[]> GetPackageVersionsAsync(string packageName)
+    /// <summary>
+    /// Returns the available versions of a package in descending order (latest to oldest).
+    /// </summary>
+    /// <param name="packageName">The name of the package</param>
+    /// <param name="includePreRelease">Whether to include pre-release versions, defaults to false</param>
+    public async Task<Version[]> GetPackageVersionsAsync(string packageName, bool includePreRelease = false)
     {
         var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
         var metadata = await resource.GetAllVersionsAsync(packageName, _cache, NullLogger.Instance, CancellationToken.None);
 
         return metadata
             .Select(v => new Version(v.ToFullString(), true))
-            .Where(v => !v.IsPreRelease)
+            .Where(v => includePreRelease || !v.IsPreRelease)
             .OrderByDescending(v => v)
             .ToArray();
     }
 
+    /// <summary>
+    /// Downloads a package to the specified destination path.
+    /// </summary>
+    /// <param name="packageName">The name of the package</param>
+    /// <param name="version">The version of the package</param>
+    /// <param name="destinationPath">The destination path to extract the package contents</param>
+    /// <returns>True if the package was downloaded successfully, otherwise false</returns>
     public async Task<bool> DownloadPackageAsync(string packageName, Version version, string destinationPath)
     {
         try
