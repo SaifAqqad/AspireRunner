@@ -33,7 +33,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="DistributedLock.FileSystem" Version="1.0.2"/>
+        <PackageReference Include="DistributedLock.FileSystem" Version="1.0.3"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
         <PackageReference Include="NuGet.Protocol" Version="6.12.1" />
         <PackageReference Include="SemanticVersioning" Version="2.0.2"/>
