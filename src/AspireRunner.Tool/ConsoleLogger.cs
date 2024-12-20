@@ -11,6 +11,8 @@ public class ConsoleLogger<T> : ILogger<T>
         Verbose = verbose;
     }
 
+    public void LogTitle(string title) => this.LogInformation(Bold(title));
+
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
     {
         if (!IsEnabled(logLevel))

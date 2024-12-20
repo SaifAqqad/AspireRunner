@@ -2,52 +2,50 @@
 using AspireRunner.Core.Extensions;
 using AspireRunner.Core.Helpers;
 using AspireRunner.Tool;
-using CommandLine;
 using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-var logger = new ConsoleLogger<Program>(verbose: false);
-logger.LogInformation(Bold().Magenta("Aspire Dashboard Runner"));
-
-var argsResult = Parser.Default.ParseArguments<Arguments>(args);
-if (argsResult.Errors.Any() || argsResult.Value is null)
+try
 {
-    switch (argsResult.Errors.FirstOrDefault())
+    return await RunTool(args);
+}
+catch (Exception ex)
+{
+    if (ex is not ConsoleRunnerException runnerException)
     {
-        case HelpRequestedError or VersionRequestedError:
-            return ReturnCodes.Success;
-        default:
-            logger.LogError("Invalid arguments");
-            return ReturnCodes.InvalidArguments;
+        runnerException = new ConsoleRunnerException
+        {
+            InnerException = ex,
+            ReturnCode = ReturnCodes.RunnerError,
+            FormattedMessage = $"An error occurred: {ex.Message}"
+        };
     }
+
+    runnerException.LogAndExit();
 }
 
-var arguments = argsResult.Value;
-logger.Verbose = arguments.Verbose;
-logger.LogDebug("Arguments: {@Arguments}", arguments);
+return ReturnCodes.Success;
 
-var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper>(arguments.Verbose));
-
-DotnetCli dotnet;
-try
+async Task<int> RunTool(string[] strings)
 {
-    dotnet = new DotnetCli(new ConsoleLogger<DotnetCli>(arguments.Verbose));
-}
-catch (Exception e)
-{
-    logger.LogError("An error occurred while initializing the dotnet CLI, {Error}", e.Message);
-    return ReturnCodes.DotnetCliError;
-}
+    var logger = new ConsoleLogger<Program>(verbose: false);
+    logger.LogTitle(Magenta("Aspire Dashboard Runner"));
 
-var dashboardOptions = BuildOptions(arguments);
-logger.LogDebug("Dashboard options: {DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
+    var arguments = Arguments.Parse(strings);
 
-var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
+    logger.Verbose = arguments.Verbose;
+    logger.LogDebug("Arguments: {@Arguments}", arguments);
 
-try
-{
-    var aspireDashboard = await aspireDashboardManager.GetDashboardAsync(dashboardOptions, new ConsoleLogger<AspireDashboard>(arguments.Verbose));
+    var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper>(arguments.Verbose));
+    var dotnet = GetDotnetCli(arguments);
+
+    var dashboardOptions = BuildOptions(arguments);
+    logger.LogDebug("Dashboard options: {DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
+
+    var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
+    var aspireDashboard = await GetDashboardAsync(aspireDashboardManager, dashboardOptions, arguments);
+
     aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
     aspireDashboard.OtlpEndpointReady += endpoint => logger.LogInformation(Green("The OTLP/{Protocol} endpoint is ready at {Url}"), endpoint.Protocol, endpoint.Url);
 
@@ -55,23 +53,29 @@ try
     using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
     using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
 
-    aspireDashboard.Start();
-    await aspireDashboard.WaitForExitAsync();
+    try
+    {
+        aspireDashboard.Start();
+        await aspireDashboard.WaitForExitAsync();
 
-    logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
-    return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
-}
-catch (Exception e)
-{
-    logger.LogError("An error occurred while starting the Aspire Dashboard, {Error}", e.Message);
-    return ReturnCodes.AspireDashboardError;
+        logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
+        return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
+    }
+    catch (Exception e)
+    {
+        throw new ConsoleRunnerException
+        {
+            FormattedMessage = $"An error occurred while starting the Aspire Dashboard: {e.Message}",
+            ReturnCode = ReturnCodes.AspireDashboardError
+        };
+    }
 }
 
 AspireDashboardOptions BuildOptions(Arguments args)
 {
     var useHttps = args.OtlpHttps ?? args.UseHttps ?? true;
-    var browserTelemetryEnabled = !string.IsNullOrWhiteSpace(args.AllowBrowserTelemetry);
     var corsConfigured = !string.IsNullOrWhiteSpace(args.CorsAllowedOrigins) || !string.IsNullOrWhiteSpace(args.CorsAllowedHeaders);
+    var browserTelemetryEnabled = args.OtlpHttpPort is > 0 and <= 65535 || corsConfigured;
 
     var aspireDashboardOptions = new AspireDashboardOptions
     {
@@ -83,7 +87,7 @@ AspireDashboardOptions BuildOptions(Arguments args)
         Otlp = new OtlpOptions
         {
             PrimaryApiKey = args.OtlpKey,
-            Cors = browserTelemetryEnabled || corsConfigured ? new OtlpCorsOptions() : null,
+            Cors = browserTelemetryEnabled ? new OtlpCorsOptions() : null,
             AuthMode = string.IsNullOrWhiteSpace(args.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey
         },
         Runner = new RunnerOptions
@@ -100,7 +104,7 @@ AspireDashboardOptions BuildOptions(Arguments args)
         aspireDashboardOptions.Otlp.GrpcEndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpPort, useHttps);
     }
 
-    if (args.OtlpHttpPort is > 0 and <= 65535 || browserTelemetryEnabled)
+    if (browserTelemetryEnabled)
     {
         aspireDashboardOptions.Otlp.HttpEndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpHttpPort ?? OtlpOptions.DefaultOtlpHttpPort, useHttps);
     }
@@ -108,8 +112,43 @@ AspireDashboardOptions BuildOptions(Arguments args)
     if (aspireDashboardOptions.Otlp.Cors is not null)
     {
         aspireDashboardOptions.Otlp.Cors.AllowedHeaders = args.CorsAllowedHeaders;
-        aspireDashboardOptions.Otlp.Cors.AllowedOrigins = args.CorsAllowedOrigins ?? args.AllowBrowserTelemetry ?? "*";
+        aspireDashboardOptions.Otlp.Cors.AllowedOrigins = args.CorsAllowedOrigins ?? "*";
     }
 
     return aspireDashboardOptions;
+}
+
+DotnetCli GetDotnetCli(Arguments args)
+{
+    try
+    {
+        return new DotnetCli(new ConsoleLogger<DotnetCli>(args.Verbose));
+    }
+    catch (Exception e)
+    {
+        throw new ConsoleRunnerException
+        {
+            InnerException = e,
+            ReturnCode = ReturnCodes.DotnetCliError,
+            FormattedMessage = $"An error occurred while initializing the dotnet CLI: {e.Message}"
+        };
+    }
+}
+
+async Task<AspireDashboard> GetDashboardAsync(AspireDashboardManager aspireDashboardManager, AspireDashboardOptions dashboardOptions, Arguments arguments)
+{
+    try
+    {
+        var aspireDashboard = await aspireDashboardManager.GetDashboardAsync(dashboardOptions, new ConsoleLogger<AspireDashboard>(arguments.Verbose));
+        return aspireDashboard;
+    }
+    catch (Exception e)
+    {
+        throw new ConsoleRunnerException
+        {
+            InnerException = e,
+            ReturnCode = ReturnCodes.AspireInstallationError,
+            FormattedMessage = $"An error occurred while initializing the Aspire Dashboard: {e.Message}"
+        };
+    }
 }

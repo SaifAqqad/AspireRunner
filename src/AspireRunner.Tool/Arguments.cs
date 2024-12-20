@@ -31,9 +31,6 @@ public record Arguments
     [Option("otlp-https", HelpText = "Use HTTPS instead of HTTP for the OTLP/gRPC and OTLP/HTTP endpoints, overrides the global HTTPS option")]
     public bool? OtlpHttps { get; set; }
 
-    [Option("allow-browsers", HelpText = "Shorthand for enabling browser telemetry, this will enable the OTLP/HTTP endpoint (default port 4318) and configure cors-origins to the passed value or *")]
-    public string? AllowBrowserTelemetry { get; set; }
-
     [Option("cors-origins", HelpText = "The allowed origins for CORS requests, separated by a comma, wildcard (*) can be used to allow any domain")]
     public string? CorsAllowedOrigins { get; set; }
 
@@ -51,4 +48,33 @@ public record Arguments
 
     [Option('v', "verbose", HelpText = "Enable verbose logging")]
     public bool Verbose { get; set; }
+
+    private static readonly Parser Parser = new(options =>
+    {
+        options.AutoHelp = true;
+        options.GetoptMode = true;
+        options.AutoVersion = true;
+        options.CaseSensitive = false;
+        options.HelpWriter = Console.Error;
+    });
+
+    public static Arguments Parse(string[] args)
+    {
+        var argsResult = Parser.ParseArguments<Arguments>(args);
+        if (argsResult.Errors.Any() || argsResult.Value is null)
+        {
+            if (argsResult.Errors.FirstOrDefault() is VersionRequestedError or HelpRequestedError)
+            {
+                Environment.Exit(ReturnCodes.Success);
+            }
+
+            throw new ConsoleRunnerException
+            {
+                FormattedMessage = "Invalid arguments",
+                ReturnCode = ReturnCodes.InvalidArguments
+            };
+        }
+
+        return argsResult.Value;
+    }
 }

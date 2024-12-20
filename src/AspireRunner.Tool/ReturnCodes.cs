@@ -11,4 +11,6 @@ public static class ReturnCodes
     public const int AspireInstallationError = -3;
 
     public const int AspireDashboardError = -4;
+
+    public const int RunnerError = -5;
 }
