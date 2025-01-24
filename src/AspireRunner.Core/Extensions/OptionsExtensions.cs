@@ -34,7 +34,7 @@ public static class OptionsExtensions
             envVars["DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"] = httpOtlpUrl;
         }
 
-        if (options.Otlp.GrpcEndpointUrl is null && options.Otlp.HttpEndpointUrl is null)
+        if (options.Otlp.EndpointUrl is null && options.Otlp.HttpEndpointUrl is null)
         {
             envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = BuildLocalUrl(OtlpOptions.DefaultOtlpGrpcPort);
         }

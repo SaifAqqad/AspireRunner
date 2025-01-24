@@ -101,7 +101,7 @@ AspireDashboardOptions BuildOptions(Arguments args)
 
     if (args.OtlpPort is > 0 and <= 65535)
     {
-        aspireDashboardOptions.Otlp.GrpcEndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpPort, useHttps);
+        aspireDashboardOptions.Otlp.EndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpPort, useHttps);
     }
 
     if (browserTelemetryEnabled)

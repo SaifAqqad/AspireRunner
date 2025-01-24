@@ -47,7 +47,7 @@ public sealed record OtlpOptions
     /// <summary>
     /// The OTLP/gRPC endpoint. This endpoint hosts an OTLP service to receive telemetry.
     /// </summary>
-    public string? GrpcEndpointUrl { get; set; }
+    public string? EndpointUrl { get; set; }
 
     /// <summary>
     /// The OTLP/HTTP endpoint. This endpoint hosts an OTLP service to receive telemetry. OTLP/gRPC and OTLP/HTTP endpoints can be used simultaneously.
