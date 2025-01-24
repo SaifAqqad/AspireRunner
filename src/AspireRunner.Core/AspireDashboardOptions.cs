@@ -137,6 +137,21 @@ public sealed record RunnerOptions
     /// Specifies the preferred version of the dashboard to run/download.
     /// </summary>
     public string? PreferredVersion { get; set; }
+
+    /// <summary>
+    /// Attempt to restart the dashboard if it exits unexpectedly. (i.e., not using the runner)
+    /// </summary>
+    public bool RestartOnFailure { get; set; } = true;
+
+    /// <summary>
+    /// The number of times to retry running the dashboard if it fails to start.
+    /// </summary>
+    public int RunRetryCount { get; set; } = 0;
+
+    /// <summary>
+    /// The delay in seconds between retry attempts to run the dashboard.
+    /// </summary>
+    public int RunRetryDelay { get; set; } = 5;
 }
 
 public enum FrontendAuthMode

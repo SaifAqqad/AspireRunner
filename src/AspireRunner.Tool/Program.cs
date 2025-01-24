@@ -27,12 +27,12 @@ catch (Exception ex)
 
 return ReturnCodes.Success;
 
-async Task<int> RunTool(string[] strings)
+async Task<int> RunTool(string[] args)
 {
     var logger = new ConsoleLogger<Program>(verbose: false);
     logger.LogTitle(Magenta("Aspire Dashboard Runner"));
 
-    var arguments = Arguments.Parse(strings);
+    var arguments = Arguments.Parse(args);
 
     logger.Verbose = arguments.Verbose;
     logger.LogDebug("Arguments: {@Arguments}", arguments);
@@ -55,7 +55,7 @@ async Task<int> RunTool(string[] strings)
 
     try
     {
-        aspireDashboard.Start();
+        await aspireDashboard.StartAsync();
         await aspireDashboard.WaitForExitAsync();
 
         logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);

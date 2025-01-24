@@ -55,50 +55,66 @@ public partial class AspireDashboard
         _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerFolder), InstanceLock);
     }
 
-    public void Start()
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        if (IsRunning)
+        if (IsRunning || cancellationToken.IsCancellationRequested)
         {
             return;
         }
 
-        using (_instanceLock.Acquire(timeout: TimeSpan.FromSeconds(InstanceLockTimeout)))
+        var retryCount = 0;
+        var retryDelay = TimeSpan.FromSeconds(Options.Runner.RunRetryDelay);
+
+        do
         {
-            var instance = TryGetRunningInstance();
-            if (!instance.Runner.IsRunning() && instance.Dashboard.IsRunning())
+            if (retryCount > 0)
             {
-                // orphaned instance, kill it
-                instance.Dashboard!.Kill(true);
+                _logger.LogWarning("Failed to start the Aspire Dashboard, retrying in {RetryDelay} seconds...", Options.Runner.RunRetryDelay);
+                await Task.Delay(retryDelay, cancellationToken);
             }
+
+            if (await TryStartProcessAsync(cancellationToken))
+            {
+                return;
+            }
+        } while (retryCount++ < Options.Runner.RunRetryCount && !cancellationToken.IsCancellationRequested);
+    }
+
+    private async Task<bool> TryStartProcessAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using var lockHandle = await _instanceLock.AcquireAsync(timeout: TimeSpan.FromSeconds(InstanceLockTimeout), cancellationToken: cancellationToken);
+            var instance = TryGetRunningInstance();
 
             if (instance.Dashboard.IsRunning())
             {
-                switch (Options.Runner.SingleInstanceHandling)
+                if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.ReplaceExisting || !instance.Runner.IsRunning())
                 {
-                    case SingleInstanceHandling.ReplaceExisting:
-                    {
-                        instance.Dashboard?.Kill(true);
-                        break;
-                    }
-                    case SingleInstanceHandling.WarnAndExit:
-                    {
-                        _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", instance.Dashboard!.Id);
-                        return;
-                    }
+                    instance.Dashboard!.Kill(true);
+                }
+                else if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.WarnAndExit)
+                {
+                    //  TODO: Listen for it to exit and then start the new instance
+                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", instance.Dashboard!.Id);
+                    return false;
                 }
             }
 
-            try
+            _dashboardProcess = ProcessHelper.Run(_dotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
+            if (_dashboardProcess is null)
             {
-                _dashboardProcess = ProcessHelper.Run(_dotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
-                return;
+                _logger.LogError("Failed to start the Aspire Dashboard");
+                return false;
             }
 
             PersistInstance();
+            return true;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
+            return false;
         }
     }
 

@@ -16,7 +16,7 @@ public class AspireDashboardService(
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Avoid blocking the startup process
-        _ = Task.Run(async () =>
+        _ = Task.Delay(10, cancellationToken).ContinueWith(async _ =>
         {
             try
             {
@@ -25,7 +25,7 @@ public class AspireDashboardService(
                 _aspireDashboard = await dashboardManager.GetDashboardAsync(options.Value, loggerFactory.CreateLogger<AspireDashboard>());
                 logger.LogInformation("Found Aspire Dashboard version {Version}", _aspireDashboard.Version);
 
-                _aspireDashboard.Start();
+                await _aspireDashboard.StartAsync(cancellationToken);
             }
             catch (Exception e)
             {
