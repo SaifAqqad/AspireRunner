@@ -24,7 +24,7 @@ public static class OptionsExtensions
             envVars[envVarName] = property.Value.ToString();
         }
 
-        if (envVars.TryGetValue("DASHBOARD__OTLP__GRPCENDPOINTURL", out var otlpUrl))
+        if (envVars.TryGetValue("DASHBOARD__OTLP__ENDPOINTURL", out var otlpUrl))
         {
             envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = otlpUrl;
         }

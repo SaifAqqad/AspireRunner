@@ -111,17 +111,7 @@ public partial class AspireDashboard
 
             if (Options.Runner.RestartOnFailure)
             {
-                _dashboardProcess.EnableRaisingEvents = true;
-                _dashboardProcess.Exited += async (_, _) =>
-                {
-                    if (_stopRequested)
-                    {
-                        return;
-                    }
-
-                    _logger.LogWarning("Aspire dashboard exited unexpectedly, Attempting to restart...");
-                    await StartAsync(cancellationToken);
-                };
+                DashboardStarted += RegisterProcessExitHandler;
             }
 
             PersistInstance();
@@ -170,6 +160,27 @@ public partial class AspireDashboard
         }
 
         return _dashboardProcess!.WaitForExitAsync(cancellationToken);
+    }
+
+    private void RegisterProcessExitHandler(string _)
+    {
+        DashboardStarted -= RegisterProcessExitHandler;
+        if (_dashboardProcess == null)
+        {
+            return;
+        }
+
+        _dashboardProcess.EnableRaisingEvents = true;
+        _dashboardProcess.Exited += async (_, _) =>
+        {
+            if (_stopRequested)
+            {
+                return;
+            }
+
+            _logger.LogWarning("Aspire dashboard exited unexpectedly, Attempting to restart...");
+            await StartAsync();
+        };
     }
 
     private void OutputHandler(string output)
