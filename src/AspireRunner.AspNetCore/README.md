@@ -35,7 +35,7 @@ if (builder.Environment.IsDevelopment())
         },
         Runner = new RunnerOptions
         {
-            AutoDownload = true
+            LaunchBrowser = true
         }
     });
 }
@@ -50,11 +50,6 @@ await app.RunAsync();
 > [!NOTE]
 > The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
 
-> [!IMPORTANT]
-> While the runner itself targets .NET 6 (and later), the dashboard requires the .NET 8/9 runtime to run.
->
-> Meaning that the runner can be used as part of a .NET 6 application, but you'll still need the .NET 8/9 runtime to run the dashboard.
-
 ### Configuration
 
 The runner can be configured with the [`AspireDashboardOptions`](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/AspireDashboardOptions.cs) class, which
@@ -68,6 +63,11 @@ has runner-specific options under the `Runner` property:
     1. `WarnAndExit`: Logs a warning and exits if an existing instance is found.
     2. `Ignore`: Disables checking for running instances of the Aspire Dashboard. Note that new instances will fail to start if an existing one is using the same port
     3. `ReplaceExisting`: Kills any existing instance before starting a new one.
-- `AutoUpdate` (bool): When enabled, the runner will automatically update the dashboard to the latest version on startup.
+- `AutoUpdate` (bool): When enabled, the runner will automatically check and update the dashboard to the latest 
+  version at startup.
 - `PreferredVersion` (string): The version of the dashboard to download/run. If not specified or invalid, the latest 
   version will be used.
+- `RestartOnFailure` (bool): When enabled, the runner will automatically restart the dashboard if it exits 
+  unexpectedly.
+- `RunRetryCount` (int): The number of times to retry running the dashboard if it fails to start
+- `RunRetryDelay` (int): The delay between retry attempts to restart the dashboard (in seconds).

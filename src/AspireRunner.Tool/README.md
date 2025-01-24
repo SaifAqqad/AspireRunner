@@ -37,6 +37,10 @@ Options:
 
   --otlp-https           Use HTTPS instead of HTTP for the OTLP/gRPC and OTLP/HTTP endpoints, overrides the global HTTPS option
 
+  --cors-origins         The allowed origins for CORS requests, separated by a comma, wildcard (*) can be used to allow any domain
+
+  --cors-headers         The allowed headers for CORS requests, separated by a comma
+
   -m, --multiple         Allow running multiple instances of the dashboard, if this isn't passed, existing instances will be replaced
 
   --auto-update          Automatically update the dashboard to the latest version, Enabled by default
