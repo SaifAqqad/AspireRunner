@@ -92,14 +92,10 @@ public partial class DotnetCli
 
     #region Regex
 
-#if NET7_0_OR_GREATER
     private static readonly Regex RuntimeOutputRegex = BuildRuntimeOutputRegex();
 
     [GeneratedRegex(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled)]
     private static partial Regex BuildRuntimeOutputRegex();
-#else
-    private static readonly Regex RuntimeOutputRegex = new(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled);
-#endif
 
     #endregion
 }
