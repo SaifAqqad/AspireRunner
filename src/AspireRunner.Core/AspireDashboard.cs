@@ -12,6 +12,7 @@ public partial class AspireDashboard
     private StringBuilder? _lastError;
     private DateTimeOffset? _lastErrorTime;
     private Process? _dashboardProcess;
+    private bool _stopRequested;
 
     private readonly string _dllPath;
     private readonly string _runnerFolder;
@@ -108,6 +109,21 @@ public partial class AspireDashboard
                 return false;
             }
 
+            if (Options.Runner.RestartOnFailure)
+            {
+                _dashboardProcess.EnableRaisingEvents = true;
+                _dashboardProcess.Exited += async (_, _) =>
+                {
+                    if (_stopRequested)
+                    {
+                        return;
+                    }
+
+                    _logger.LogWarning("Aspire dashboard exited unexpectedly, Attempting to restart...");
+                    await StartAsync(cancellationToken);
+                };
+            }
+
             PersistInstance();
             return true;
         }
@@ -130,6 +146,7 @@ public partial class AspireDashboard
 
         try
         {
+            _stopRequested = true;
             _logger.LogInformation("Stopping the Aspire Dashboard...");
             _dashboardProcess?.Kill(true);
         }
