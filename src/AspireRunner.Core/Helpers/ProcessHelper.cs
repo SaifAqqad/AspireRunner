@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AspireRunner.Core.Helpers;
 
@@ -51,7 +52,7 @@ internal static class ProcessHelper
         return process;
     }
 
-    public static bool IsRunning(this Process? process)
+    public static bool IsRunning([NotNullWhen(true)] this Process? process)
     {
         return process?.HasExited is false;
     }

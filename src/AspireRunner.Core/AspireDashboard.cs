@@ -92,12 +92,11 @@ public partial class AspireDashboard
             {
                 if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.ReplaceExisting || !instance.Runner.IsRunning())
                 {
-                    instance.Dashboard!.Kill(true);
+                    instance.Dashboard.Kill(true);
                 }
                 else if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.WarnAndExit)
                 {
-                    //  TODO: Listen for it to exit and then start the new instance
-                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", instance.Dashboard!.Id);
+                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", instance.Dashboard.Id);
                     return false;
                 }
             }
@@ -162,10 +161,10 @@ public partial class AspireDashboard
         return _dashboardProcess!.WaitForExitAsync(cancellationToken);
     }
 
-    private void RegisterProcessExitHandler(string _)
+    private void RegisterProcessExitHandler(string? _ = null)
     {
         DashboardStarted -= RegisterProcessExitHandler;
-        if (_dashboardProcess == null)
+        if (!_dashboardProcess.IsRunning())
         {
             return;
         }
