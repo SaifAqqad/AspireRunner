@@ -18,9 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment())
 {
     // bind from configuration (appsettings.json, etc)
-    builder.Services.AddAspireDashboard(config => {
-        builder.Configuration.GetSection("AspireDashboard").Bind(config);
-    });
+    builder.Services.AddAspireDashboard(options => builder.Configuration.GetSection("AspireDashboard").Bind(options));
 
     // or pass an options instance
     builder.Services.AddAspireDashboard(new AspireDashboardOptions

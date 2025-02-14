@@ -81,7 +81,8 @@ AspireDashboardOptions BuildOptions(Arguments args)
     {
         Frontend = new FrontendOptions
         {
-            AuthMode = args.UseAuth ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
+            BrowserToken = args.AuthToken,
+            AuthMode = args.UseAuth || !string.IsNullOrWhiteSpace(args.AuthToken) ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
             EndpointUrls = OptionsExtensions.BuildLocalUrl(args.DashboardPort, args.DashboardHttps ?? args.UseHttps ?? true)
         },
         Otlp = new OtlpOptions
