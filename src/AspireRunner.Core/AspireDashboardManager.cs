@@ -101,7 +101,7 @@ public class AspireDashboardManager
             var availableVersions = await _nugetHelper.GetPackageVersionsAsync(_nugetPackageName);
 
             var installedVersions = Directory.GetDirectories(Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder))
-                .Select(d => new Version(new DirectoryInfo(d).Name))
+                .Select(d => new Version(new DirectoryInfo(d).Name, true))
                 .ToArray();
 
             var latestRuntimeVersion = installedRuntimes.Max();

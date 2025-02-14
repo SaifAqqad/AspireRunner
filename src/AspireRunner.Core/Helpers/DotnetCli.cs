@@ -40,7 +40,7 @@ public partial class DotnetCli
         return runtimesOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => RuntimeOutputRegex.Match(s))
             .Where(m => m.Success)
-            .Select(m => (Name: m.Groups[1].Value, Version: new Version(m.Groups[2].Value)))
+            .Select(m => (Name: m.Groups[1].Value, Version: new Version(m.Groups[2].Value, true)))
             .ToArray();
     }
 
