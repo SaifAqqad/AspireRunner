@@ -40,6 +40,9 @@ public record Arguments
     [Option("cors-headers", HelpText = "The allowed headers for CORS requests, separated by a comma")]
     public string? CorsAllowedHeaders { get; set; }
 
+    [Option("hostname", HelpText = "The hostname used for the dashboard, if not passed, 'localhost' will be used")]
+    public string? Hostname { get; set; }
+
     [Option('m', "multiple", HelpText = "Allow running multiple instances of the dashboard, if this isn't passed, existing instances will be replaced")]
     public bool AllowMultipleInstances { get; set; }
 

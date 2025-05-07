@@ -47,9 +47,14 @@ public static class OptionsExtensions
         return envVars;
     }
 
-    public static string BuildLocalUrl(int port, bool secure = false)
+    public static string BuildLocalUrl(int port, bool secure = false, string? hostname = null)
     {
         var protocol = secure ? "https" : "http";
-        return $"{protocol}://localhost:{port}";
+        if (string.IsNullOrWhitespace(hostname))
+        {
+            hostname = "localhost";
+        }
+
+        return $"{protocol}://{hostname}:{port}";
     }
 }

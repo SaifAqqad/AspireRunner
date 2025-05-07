@@ -83,7 +83,7 @@ AspireDashboardOptions BuildOptions(Arguments args)
         {
             BrowserToken = args.AuthToken,
             AuthMode = args.UseAuth || !string.IsNullOrWhiteSpace(args.AuthToken) ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
-            EndpointUrls = OptionsExtensions.BuildLocalUrl(args.DashboardPort, args.DashboardHttps ?? args.UseHttps ?? true)
+            EndpointUrls = OptionsExtensions.BuildLocalUrl(args.DashboardPort, args.DashboardHttps ?? args.UseHttps ?? true, args.Hostname)
         },
         Otlp = new OtlpOptions
         {
@@ -102,12 +102,12 @@ AspireDashboardOptions BuildOptions(Arguments args)
 
     if (args.OtlpPort is > 0 and <= 65535)
     {
-        aspireDashboardOptions.Otlp.EndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpPort, useHttps);
+        aspireDashboardOptions.Otlp.EndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpPort, useHttps, args.Hostname);
     }
 
     if (browserTelemetryEnabled)
     {
-        aspireDashboardOptions.Otlp.HttpEndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpHttpPort ?? OtlpOptions.DefaultOtlpHttpPort, useHttps);
+        aspireDashboardOptions.Otlp.HttpEndpointUrl = OptionsExtensions.BuildLocalUrl(args.OtlpHttpPort ?? OtlpOptions.DefaultOtlpHttpPort, useHttps, args.Hostname);
     }
 
     if (aspireDashboardOptions.Otlp.Cors is not null)
