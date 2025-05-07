@@ -50,7 +50,7 @@ public static class OptionsExtensions
     public static string BuildLocalUrl(int port, bool secure = false, string? hostname = null)
     {
         var protocol = secure ? "https" : "http";
-        if (string.IsNullOrWhitespace(hostname))
+        if (string.IsNullOrWhiteSpace(hostname))
         {
             hostname = "localhost";
         }
