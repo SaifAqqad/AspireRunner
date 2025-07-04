@@ -11,8 +11,6 @@ public static class AspireDashboardExtensions
         services.AddOptions<AspireDashboardOptions>()
             .Configure(options => configureOptions?.Invoke(options));
 
-        services.AddSingleton<DotnetCli>();
-        services.AddSingleton<NugetHelper>();
         services.AddSingleton<AspireDashboardManager>();
         services.AddHostedService<AspireDashboardService>();
 

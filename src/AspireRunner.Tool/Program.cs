@@ -37,13 +37,10 @@ async Task<int> RunTool(string[] args)
     logger.Verbose = arguments.Verbose;
     logger.LogDebug("Arguments: {@Arguments}", arguments);
 
-    var nugetHelper = new NugetHelper(new ConsoleLogger<NugetHelper>(arguments.Verbose));
-    var dotnet = GetDotnetCli(arguments);
-
     var dashboardOptions = BuildOptions(arguments);
     logger.LogDebug("Dashboard options: {DashboardOptions}", JsonSerializer.Serialize(dashboardOptions));
 
-    var aspireDashboardManager = new AspireDashboardManager(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
+    var aspireDashboardManager = new AspireDashboardManager(new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
     var aspireDashboard = await GetDashboardAsync(aspireDashboardManager, dashboardOptions, arguments);
 
     aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
@@ -118,23 +115,23 @@ AspireDashboardOptions BuildOptions(Arguments args)
 
     return aspireDashboardOptions;
 }
-
-DotnetCli GetDotnetCli(Arguments args)
-{
-    try
-    {
-        return new DotnetCli(new ConsoleLogger<DotnetCli>(args.Verbose));
-    }
-    catch (Exception e)
-    {
-        throw new ConsoleRunnerException
-        {
-            InnerException = e,
-            ReturnCode = ReturnCodes.DotnetCliError,
-            FormattedMessage = $"An error occurred while initializing the dotnet CLI: {e.Message}"
-        };
-    }
-}
+//
+// DotnetCli GetDotnetCli(Arguments args)
+// {
+//     try
+//     {
+//         return new DotnetCli(new ConsoleLogger<DotnetCli>(args.Verbose));
+//     }
+//     catch (Exception e)
+//     {
+//         throw new ConsoleRunnerException
+//         {
+//             InnerException = e,
+//             ReturnCode = ReturnCodes.DotnetCliError,
+//             FormattedMessage = $"An error occurred while initializing the dotnet CLI: {e.Message}"
+//         };
+//     }
+// }
 
 async Task<AspireDashboard> GetDashboardAsync(AspireDashboardManager aspireDashboardManager, AspireDashboardOptions dashboardOptions, Arguments arguments)
 {

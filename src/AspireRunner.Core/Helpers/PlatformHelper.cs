@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace AspireRunner.Core.Helpers;
 
-internal static class PlatformHelper
+public static class PlatformHelper
 {
     private static readonly string[] LinuxUrlOpeners =
     [
@@ -106,7 +106,7 @@ internal static class PlatformHelper
             return ("setsid", [_linuxUrlOpener, url]);
         }
 
-        var envPaths = GetPaths();
+        var envPaths = EnvironmentVariables.Paths;
         _linuxUrlOpener = LinuxUrlOpeners
             .SelectMany(o => envPaths.Select(p => (Name: o, Path: Path.Combine(p, o))))
             .FirstOrDefault(p => File.Exists(p.Path))
@@ -119,28 +119,5 @@ internal static class PlatformHelper
 
         // setsid is used to detach the launched process from the runner
         return ("setsid", [_linuxUrlOpener, url]);
-    }
-
-    /// <summary>
-    /// Returns all paths in the system's <c>PATH</c> environment variable.
-    /// </summary>
-    /// <returns>A string array containing all paths in the system's <c>PATH</c> environment variable.</returns>
-    /// <remarks>When running inside WSL, windows paths (like <c>/mnt/c/*</c>) will be excluded to avoid conflicts with windows executables</remarks>
-    public static string[] GetPaths()
-    {
-        var pathEnv = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrWhiteSpace(pathEnv))
-        {
-            return [];
-        }
-
-        var paths = pathEnv.Split(Path.PathSeparator);
-        if (IsWsl())
-        {
-            // exclude windows paths to avoid conflicts
-            paths = paths.Where(p => !p.StartsWith("/mnt/c/")).ToArray();
-        }
-
-        return paths;
     }
 }

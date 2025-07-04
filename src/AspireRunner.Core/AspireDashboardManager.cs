@@ -6,65 +6,65 @@ namespace AspireRunner.Core;
 
 public class AspireDashboardManager
 {
-    private readonly DotnetCli _dotnetCli;
-    private readonly NugetHelper _nugetHelper;
-    private readonly ILogger<AspireDashboardManager> _logger;
+    private const string AspRuntimeName = "Microsoft.AspNetCore.App";
 
-    private readonly string _runnerFolder;
-    private readonly string _nugetPackageName;
+    private readonly string _runnerPath;
+    private readonly ILogger<AspireDashboardManager> _logger;
 
     private record DashboardInstallationInfo(Version Version, string Path);
 
-    public AspireDashboardManager(DotnetCli dotnetCli, NugetHelper nugetHelper, ILogger<AspireDashboardManager> logger)
+    public AspireDashboardManager(ILogger<AspireDashboardManager> logger)
     {
         _logger = logger;
-        _dotnetCli = dotnetCli;
-        _nugetHelper = nugetHelper;
-        _nugetPackageName = $"{AspireDashboard.SdkName}.{PlatformHelper.Rid()}";
-        _runnerFolder = Path.Combine(_dotnetCli.DataPath, AspireDashboard.DataFolder);
-
-        if (!Directory.Exists(_runnerFolder))
+        _runnerPath = GetRunnerPath();
+        if (!Directory.Exists(_runnerPath))
         {
-            Directory.CreateDirectory(_runnerFolder);
+            Directory.CreateDirectory(_runnerPath);
         }
     }
 
     public async Task<AspireDashboard> GetDashboardAsync(AspireDashboardOptions options, ILogger<AspireDashboard>? logger = null)
     {
-        var installedRuntimes = (await _dotnetCli.GetInstalledRuntimesAsync())
-            .Where(r => r.Name is AspireDashboard.AspRuntimeName && r.Version >= AspireDashboard.MinimumRuntimeVersion)
-            .Select(r => r.Version)
-            .ToArray();
-
-        _logger.LogTrace("Installed runtimes: {InstalledRuntimes}", string.Join(", ", installedRuntimes.Select(v => v.ToString())));
-        if (installedRuntimes.Length == 0)
+        var compatibleRuntimes = await GetCompatibleRuntimes();
+        if (_logger.IsEnabled(LogLevel.Trace))
         {
-            throw new ApplicationException($"The dashboard requires version '{AspireDashboard.MinimumRuntimeVersion}' or newer of the '{AspireDashboard.AspRuntimeName}' runtime");
+            _logger.LogTrace("Found compatible runtimes: {CompatibleRuntimes}", string.Join(", ", compatibleRuntimes.Select(v => $"{v}")));
         }
 
-        var preferredDashboard = await TryGetPreferredDashboard(options.Runner.PreferredVersion, installedRuntimes);
+        if (compatibleRuntimes.Length == 0)
+        {
+            throw new ApplicationException($"The dashboard requires version '{AspireDashboard.MinimumRuntimeVersion}' or newer of the '{AspRuntimeName}' runtime");
+        }
+
+        var preferredDashboard = TryGetPreferredDashboard(options.Runner.PreferredVersion, compatibleRuntimes);
         if (preferredDashboard is not null)
         {
             _logger.LogTrace("Aspire Dashboard installation path: '{AspirePath}'", preferredDashboard.Path);
-            return new AspireDashboard(_dotnetCli, preferredDashboard.Version, preferredDashboard.Path, options, logger ?? new NullLogger<AspireDashboard>());
+            return new AspireDashboard(_runnerPath, preferredDashboard.Version, preferredDashboard.Path, options, logger ?? new NullLogger<AspireDashboard>());
         }
+
+        // TODO: Move this out of core
+        // if (!IsInstalled())
+        // {
+        //     _logger.LogWarning("The Aspire Dashboard is not installed, downloading the latest version from nuget...");
+        //     var latestVersion = await FetchLatestVersionAsync(compatibleRuntimes);
+        //
+        //     var downloadedVersion = await InstallAsync(compatibleRuntimes, latestVersion);
+        //     if (downloadedVersion == null)
+        //     {
+        //         throw new ApplicationException("Failed to download the Aspire Dashboard");
+        //     }
+        //
+        //     _logger.LogInformation("Successfully downloaded the Aspire Dashboard (version {Version})", downloadedVersion);
+        // }
+        // else if (options.Runner.AutoUpdate)
+        // {
+        //     await TryUpdateAsync(compatibleRuntimes);
+        // }
 
         if (!IsInstalled())
         {
-            _logger.LogWarning("The Aspire Dashboard is not installed, downloading the latest version from nuget...");
-            var latestVersion = await FetchLatestVersionAsync(installedRuntimes);
-
-            var downloadedVersion = await InstallAsync(installedRuntimes, latestVersion);
-            if (downloadedVersion == null)
-            {
-                throw new ApplicationException("Failed to download the Aspire Dashboard");
-            }
-
-            _logger.LogInformation("Successfully downloaded the Aspire Dashboard (version {Version})", downloadedVersion);
-        }
-        else if (options.Runner.AutoUpdate)
-        {
-            await TryUpdateAsync(installedRuntimes);
+            throw new ApplicationException("The Aspire Dashboard is not installed, use the Installer nuget package or dotnet tool to install the dashboard.");
         }
 
         var installedDashboard = GetInstalledDashboards().DefaultIfEmpty().MaxBy(d => d?.Version);
@@ -74,105 +74,52 @@ public class AspireDashboardManager
         }
 
         _logger.LogTrace("Aspire Dashboard installation path: '{AspirePath}'", installedDashboard.Path);
-        return new AspireDashboard(_dotnetCli, installedDashboard.Version, installedDashboard.Path, options, logger ?? new NullLogger<AspireDashboard>());
+        return new AspireDashboard(_runnerPath, installedDashboard.Version, installedDashboard.Path, options, logger ?? new NullLogger<AspireDashboard>());
+    }
+
+    private static async Task<Version[]> GetCompatibleRuntimes()
+    {
+        return (await DotnetCli.GetInstalledRuntimesAsync())
+            .Where(r => r.Name is AspRuntimeName && r.Version >= AspireDashboard.MinimumRuntimeVersion)
+            .Select(r => r.Version)
+            .ToArray();
     }
 
     public bool IsInstalled()
     {
-        var downloadsFolder = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder);
+        var downloadsFolder = Path.Combine(_runnerPath, AspireDashboard.DownloadFolder);
         return Directory.Exists(downloadsFolder) && Directory.EnumerateDirectories(downloadsFolder, "*.*").Any();
     }
 
-    public async Task<Version?> InstallAsync(Version[] installedRuntimes, Version? version = null)
-    {
-        if (version == null)
-        {
-            version = await FetchLatestVersionAsync(installedRuntimes);
-        }
-
-        var installationPath = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder, version.ToString());
-        return await _nugetHelper.DownloadPackageAsync(_nugetPackageName, version, installationPath) ? version : null;
-    }
-
-    public async Task TryUpdateAsync(Version[] installedRuntimes)
-    {
-        try
-        {
-            var availableVersions = await _nugetHelper.GetPackageVersionsAsync(_nugetPackageName);
-
-            var installedVersions = Directory.GetDirectories(Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder))
-                .Select(d => new Version(new DirectoryInfo(d).Name, true))
-                .ToArray();
-
-            var latestRuntimeVersion = installedRuntimes.Max();
-            var latestInstalledVersion = installedVersions.Max();
-
-            var latestAvailableVersion = availableVersions
-                    .Where(v => IsRuntimeCompatible(v, latestRuntimeVersion!))
-                    .DefaultIfEmpty()
-                    .Max()
-                ?? availableVersions.First(); // Fallback to the latest version
-
-            if (latestAvailableVersion > latestInstalledVersion)
-            {
-                _logger.LogWarning("A newer version of the Aspire Dashboard is available, downloading version {Version}", latestAvailableVersion);
-
-                var newVersionFolder = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder, latestAvailableVersion.ToString());
-                var downloadSuccessful = await _nugetHelper.DownloadPackageAsync(_nugetPackageName, latestAvailableVersion, newVersionFolder);
-                if (downloadSuccessful)
-                {
-                    _logger.LogInformation("Successfully updated the Aspire Dashboard to version {Version}", latestAvailableVersion);
-                }
-                else
-                {
-                    _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version");
-                    Directory.Delete(newVersionFolder, true);
-                }
-            }
-            else
-            {
-                _logger.LogInformation("The Aspire Dashboard is up to date");
-            }
-        }
-        catch
-        {
-            _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version");
-        }
-    }
-
-    private async Task<DashboardInstallationInfo?> TryGetPreferredDashboard(string? preferredVersion, Version[] installedRuntimes)
+    private DashboardInstallationInfo? TryGetPreferredDashboard(string? preferredVersion, Version[] installedRuntimes)
     {
         if (string.IsNullOrWhiteSpace(preferredVersion) || !Version.TryParse(preferredVersion, true, out var version))
         {
             return null;
         }
 
-        var dashboardInstallation = GetInstalledDashboard(version);
-        if (dashboardInstallation is not null)
-        {
-            return dashboardInstallation;
-        }
+        return GetInstalledDashboard(version);
 
-        _logger.LogInformation("Version '{Version}' of the Aspire Dashboard is not installed, downloading it from nuget...", preferredVersion);
-
-        var downloadedVersion = await InstallAsync(installedRuntimes, version);
-        dashboardInstallation = downloadedVersion is not null ? GetInstalledDashboard(downloadedVersion) : null;
-
-        if (dashboardInstallation is null)
-        {
-            _logger.LogWarning("Failed to download version '{Version}' of the Aspire Dashboard, falling back to the latest version", preferredVersion);
-        }
-        else
-        {
-            _logger.LogInformation("Successfully downloaded version '{Version}' of the Aspire Dashboard", preferredVersion);
-        }
-
-        return dashboardInstallation;
+        // TODO: Move this somewhere else
+        // _logger.LogInformation("Version '{Version}' of the Aspire Dashboard is not installed, downloading it from nuget...", preferredVersion);
+        // var downloadedVersion = await InstallAsync(installedRuntimes, version);
+        // dashboardInstallation = downloadedVersion is not null ? GetInstalledDashboard(downloadedVersion) : null;
+        //
+        // if (dashboardInstallation is null)
+        // {
+        //     _logger.LogWarning("Failed to download version '{Version}' of the Aspire Dashboard, falling back to the latest version", preferredVersion);
+        // }
+        // else
+        // {
+        //     _logger.LogInformation("Successfully downloaded version '{Version}' of the Aspire Dashboard", preferredVersion);
+        // }
+        //
+        // return dashboardInstallation;
     }
 
     private DashboardInstallationInfo[] GetInstalledDashboards()
     {
-        var dashboardsFolder = Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder);
+        var dashboardsFolder = Path.Combine(_runnerPath, AspireDashboard.DownloadFolder);
         try
         {
             var installedVersions = Directory.GetDirectories(dashboardsFolder)
@@ -195,27 +142,19 @@ public class AspireDashboardManager
 
     private DashboardInstallationInfo? GetInstalledDashboard(Version version)
     {
-        var dashboardPath = $"{Path.Combine(_runnerFolder, AspireDashboard.DownloadFolder)}/{version}";
-
+        var dashboardPath = Path.Combine(_runnerPath, AspireDashboard.DownloadFolder, version.ToString());
         return Directory.Exists(dashboardPath) ? new DashboardInstallationInfo(version, $"{dashboardPath}/tools") : null;
     }
 
-    private async Task<Version> FetchLatestVersionAsync(Version[] installedRuntimes)
+    public static string GetRunnerPath()
     {
-        var availableVersions = await _nugetHelper.GetPackageVersionsAsync(_nugetPackageName);
-        if (availableVersions.Length == 0)
+        var runnerPath = EnvironmentVariables.RunnerPath;
+        if (string.IsNullOrWhiteSpace(runnerPath))
         {
-            throw new ApplicationException("No versions of the Aspire Dashboard are available");
+            runnerPath = Path.Combine(DotnetCli.DataPath, AspireDashboard.RunnerFolder);
         }
 
-        var latestRuntimeVersion = installedRuntimes.Max();
-        var versionToDownload = availableVersions
-                .Where(v => IsRuntimeCompatible(v, latestRuntimeVersion!))
-                .DefaultIfEmpty()
-                .Max()
-            ?? availableVersions.First(); // Fallback to the latest version
-
-        return versionToDownload;
+        return runnerPath;
     }
 
     private static bool IsRuntimeCompatible(Version version, Version runtimeVersion)

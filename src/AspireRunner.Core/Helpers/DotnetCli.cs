@@ -1,37 +1,25 @@
-﻿using Microsoft.Extensions.Logging;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
+using SystemPath = System.IO.Path;
 
 namespace AspireRunner.Core.Helpers;
 
-public partial class DotnetCli
+public static partial class DotnetCli
 {
-    public const string DataFolderName = ".dotnet";
+    public static readonly string DataPath = SystemPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
 
     public static readonly string ExecutableName = PlatformHelper.AsExecutable("dotnet");
 
-    private readonly ILogger<DotnetCli> _logger;
+    public static readonly string Path = GetCliPath();
 
-    public string CliPath { get; }
-
-    public string DataPath { get; }
-
-    public string Executable { get; }
-
-    public DotnetCli(ILogger<DotnetCli> logger)
-    {
-        _logger = logger;
-        CliPath = GetCliPath();
-        DataPath = GetOrCreateDataPath();
-        Executable = Path.Combine(CliPath, ExecutableName);
-    }
+    public static readonly string Executable = SystemPath.Combine(Path, ExecutableName);
 
     /// <summary>
     /// Returns all installed runtimes.
     /// </summary>
     /// <returns>A tuple array containing the name and version of each installed runtime</returns>
-    public async Task<(string Name, Version Version)[]> GetInstalledRuntimesAsync()
+    public static async Task<(string Name, Version Version)[]> GetInstalledRuntimesAsync()
     {
-        var (runtimesOutput, _) = await ProcessHelper.GetAsync(Executable, ["--list-runtimes"], workingDir: CliPath);
+        var (runtimesOutput, _) = await ProcessHelper.GetAsync(Executable, ["--list-runtimes"], workingDir: Path);
         if (string.IsNullOrWhiteSpace(runtimesOutput))
         {
             return [];
@@ -45,44 +33,24 @@ public partial class DotnetCli
     }
 
     /// <summary>
-    /// Ensures the existence of the dotnet data folder (<c>~/.dotnet</c>.) and returns its path.
-    /// </summary>
-    /// <returns>The path to the dotnet data folder.</returns>
-    private string GetOrCreateDataPath()
-    {
-        var dataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), DataFolderName);
-        if (Directory.Exists(dataFolderPath))
-        {
-            return dataFolderPath;
-        }
-
-        _logger.LogTrace("Creating dotnet data folder at {Path}", dataFolderPath);
-        Directory.CreateDirectory(dataFolderPath);
-        return dataFolderPath;
-    }
-
-    /// <summary>
     /// Returns the path to the dotnet CLI.
     /// <br/>
     /// If the <c>DOTNET_HOST_PATH</c> environment variable is set, it will be used, otherwise the system's <c>PATH</c> will be checked for a dotnet CLI.
     /// </summary>
     /// <seealso href="https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables#dotnet_host_path"/>
-    private string GetCliPath()
+    private static string GetCliPath()
     {
-        var dotnetPath = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
+        var dotnetPath = EnvironmentVariables.DotnetHostPath;
         if (!string.IsNullOrWhiteSpace(dotnetPath) && File.Exists(dotnetPath))
         {
-            _logger.LogTrace("Using dotnet CLI from DOTNET_HOST_PATH environment variable");
-            return Path.GetDirectoryName(dotnetPath)!;
+            return SystemPath.GetDirectoryName(dotnetPath)!;
         }
 
-        var paths = PlatformHelper.GetPaths();
-        foreach (var path in paths)
+        foreach (var path in EnvironmentVariables.Paths)
         {
-            dotnetPath = Path.Combine(path, ExecutableName);
+            dotnetPath = SystemPath.Combine(path, ExecutableName);
             if (File.Exists(dotnetPath))
             {
-                _logger.LogTrace("Using dotnet CLI from PATH environment variable, {Path}", dotnetPath);
                 return path;
             }
         }

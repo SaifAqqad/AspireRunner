@@ -15,8 +15,7 @@ public partial class AspireDashboard
     private bool _stopRequested;
 
     private readonly string _dllPath;
-    private readonly string _runnerFolder;
-    private readonly DotnetCli _dotnetCli;
+    private readonly string _runnerPath;
     private readonly ILogger<AspireDashboard> _logger;
     private readonly FileDistributedLock _instanceLock;
     private readonly IDictionary<string, string?> _environmentVariables;
@@ -43,17 +42,16 @@ public partial class AspireDashboard
 
     public bool IsRunning => _dashboardProcess.IsRunning();
 
-    internal AspireDashboard(DotnetCli dotnetCli, Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
+    internal AspireDashboard(string runnerPath, Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
     {
         Version = version;
         Options = options;
 
         _logger = logger;
         _dllPath = dllPath;
-        _dotnetCli = dotnetCli;
+        _runnerPath = runnerPath;
         _environmentVariables = options.ToEnvironmentVariables();
-        _runnerFolder = Path.Combine(_dotnetCli.DataPath, DataFolder);
-        _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerFolder), InstanceLock);
+        _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerPath), InstanceLock);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -101,7 +99,7 @@ public partial class AspireDashboard
                 }
             }
 
-            _dashboardProcess = ProcessHelper.Run(_dotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
+            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
             if (_dashboardProcess is null)
             {
                 _logger.LogError("Failed to start the Aspire Dashboard");
@@ -284,13 +282,13 @@ public partial class AspireDashboard
             return;
         }
 
-        var instanceFilePath = Path.Combine(_runnerFolder, InstanceFile);
+        var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
         File.WriteAllText(instanceFilePath, $"{_dashboardProcess!.Id}:{Environment.ProcessId}");
     }
 
     private (Process? Dashboard, Process? Runner) TryGetRunningInstance()
     {
-        var instanceFilePath = Path.Combine(_runnerFolder, InstanceFile);
+        var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
         if (!File.Exists(instanceFilePath))
         {
             return default;

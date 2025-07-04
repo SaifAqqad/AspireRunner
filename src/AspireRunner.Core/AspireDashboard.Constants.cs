@@ -2,15 +2,11 @@
 
 public partial class AspireDashboard
 {
-    internal const string SdkName = "Aspire.Dashboard.Sdk";
+    public const string DownloadFolder = "dashboard";
 
     internal const string DllName = "Aspire.Dashboard.dll";
 
-    internal const string AspRuntimeName = "Microsoft.AspNetCore.App";
-
-    internal const string DataFolder = ".AspireRunner";
-
-    internal const string DownloadFolder = "dashboard";
+    internal const string RunnerFolder = ".AspireRunner";
 
     internal static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
 
