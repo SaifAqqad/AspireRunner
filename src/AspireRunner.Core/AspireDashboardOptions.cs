@@ -136,6 +136,7 @@ public sealed record RunnerOptions
     /// <summary>
     /// Specifies the preferred version of the dashboard to run/download.
     /// </summary>
+    /// <remarks>Can be a specifc version (e.g. <c>9.2.0</c>), or a valid semver range specifier (e.g. <c>9.x.x</c> or <c>>=9.1.0</c></remarks>
     public string? PreferredVersion { get; set; }
 
     /// <summary>

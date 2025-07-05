@@ -4,11 +4,13 @@ public partial class AspireDashboard
 {
     public const string DownloadFolder = "dashboard";
 
-    internal const string DllName = "Aspire.Dashboard.dll";
+    public const string RunnerFolder = ".AspireRunner";
 
-    internal const string RunnerFolder = ".AspireRunner";
+    public const string DllName = "Aspire.Dashboard.dll";
 
-    internal static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
+    public const string RequiredRuntimeName = "Microsoft.AspNetCore.App";
+
+    public static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
 
     private const int DefaultErrorLogDelay = 2000;
 

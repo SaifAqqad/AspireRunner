@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 namespace AspireRunner.AspNetCore;
 
 public class AspireDashboardService(
-    ILoggerFactory loggerFactory,
     ILogger<AspireDashboardService> logger,
     IOptions<AspireDashboardOptions> options,
     AspireDashboardManager dashboardManager) : IHostedService
@@ -22,8 +21,15 @@ public class AspireDashboardService(
             {
                 logger.LogInformation("Starting the Aspire Dashboard Service");
 
-                _aspireDashboard = await dashboardManager.GetDashboardAsync(options.Value, loggerFactory.CreateLogger<AspireDashboard>());
+                _aspireDashboard = await dashboardManager.GetDashboardAsync(options.Value);
+                if (_aspireDashboard is null)
+                {
+                    logger.LogWarning("The Aspire Dashboard is not installed, use the Installer nuget package or dotnet tool to install the dashboard.");
+                    return;
+                }
+
                 logger.LogInformation("Found Aspire Dashboard version {Version}", _aspireDashboard.Version);
+                _aspireDashboard.DashboardStarted += url => logger.LogInformation("Aspire Dashboard Started, {Url}", url);
 
                 await _aspireDashboard.StartAsync(cancellationToken);
             }

@@ -26,7 +26,7 @@ public static partial class DotnetCli
         }
 
         return runtimesOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => RuntimeOutputRegex.Match(s))
+            .Select(s => RuntimeOutputRegex().Match(s))
             .Where(m => m.Success)
             .Select(m => (Name: m.Groups[1].Value, Version: new Version(m.Groups[2].Value, true)))
             .ToArray();
@@ -60,10 +60,8 @@ public static partial class DotnetCli
 
     #region Regex
 
-    private static readonly Regex RuntimeOutputRegex = BuildRuntimeOutputRegex();
-
     [GeneratedRegex(@"(.+?) ([\d\-_.\w]+?) \[(.+)\]", RegexOptions.Compiled)]
-    private static partial Regex BuildRuntimeOutputRegex();
+    private static partial Regex RuntimeOutputRegex();
 
     #endregion
 }
