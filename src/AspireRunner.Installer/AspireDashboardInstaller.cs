@@ -36,21 +36,30 @@ public class AspireDashboardInstaller
         _repository = Repository.Factory.GetCoreV3(repoUrl);
     }
 
-
-    /// <summary>
-    /// Returns the available dashboard versions in descending order (newest to oldest).
-    /// </summary>
-    /// <param name="includePreRelease">Whether to include pre-release versions, defaults to false</param>
-    public async Task<Version[]> GetAvailableVersionsAsync(bool includePreRelease = false)
+    public async Task<(bool Success, Version? Installed, Version Latest)> EnsureLatestAsync(CancellationToken cancellationToken = default)
     {
-        var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
-        var metadata = await resource.GetAllVersionsAsync(_nugetPackageName, _cache, NullLogger.Instance, CancellationToken.None);
+        var latestRuntimeVersion = (await GetCompatibleRuntimesAsync()).Max();
 
-        return metadata
-            .Select(v => new Version(v.ToFullString(), true))
-            .Where(v => includePreRelease || !v.IsPreRelease)
-            .OrderByDescending(v => v)
-            .ToArray();
+        var availableVersions = await GetAvailableVersionsAsync(cancellationToken: cancellationToken);
+        if (availableVersions.Length == 0)
+        {
+            throw new ApplicationException("No versions of the Aspire Dashboard are available");
+        }
+
+        var latestCompatible = availableVersions
+                .Where(v => IsRuntimeCompatible(v, latestRuntimeVersion!))
+                .Max()
+            ?? availableVersions.First(); // Fallback to the latest version
+
+        var latestInstalled = AspireDashboardManager.GetInstalledVersions().Max();
+        if (latestInstalled == latestCompatible)
+        {
+            // Dashboard is up-to-date
+            return (true, latestInstalled, latestCompatible);
+        }
+
+        var success = await InstallAsync(latestCompatible, cancellationToken);
+        return (success, latestInstalled, latestCompatible);
     }
 
     /// <summary>
@@ -59,12 +68,12 @@ public class AspireDashboardInstaller
     /// <param name="version">The version of the dashboard</param>
     /// <param name="destinationPath">The destination path to extract the package contents in</param>
     /// <returns><c>true</c> if the dashboard was installed successfully, <c>false</c> otherwise</returns>
-    public async Task<bool> InstallAsync(Version version)
+    public async Task<bool> InstallAsync(Version version, CancellationToken cancellationToken = default)
     {
         try
         {
             using var packageStream = new MemoryStream();
-            var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
+            var resource = await _repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
 
             var destinationPath = Path.Combine(_runnerPath, version.ToString());
             _logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", _nugetPackageName, version, destinationPath);
@@ -78,13 +87,13 @@ public class AspireDashboardInstaller
                 CancellationToken.None
             );
 
-            if (!success)
+            if (!success || cancellationToken.IsCancellationRequested)
             {
                 return false;
             }
 
             using var packageReader = new PackageArchiveReader(packageStream);
-            await packageReader.CopyFilesAsync(destinationPath, packageReader.GetFiles(), ExtractFile, NullLogger.Instance, CancellationToken.None);
+            await packageReader.CopyFilesAsync(destinationPath, packageReader.GetFiles(), ExtractFile, NullLogger.Instance, cancellationToken);
 
             return true;
         }
@@ -95,70 +104,33 @@ public class AspireDashboardInstaller
         }
     }
 
-    public async Task TryUpdateAsync(Version[] installedRuntimes)
+    /// <summary>
+    /// Returns the available dashboard versions in descending order (newest to oldest).
+    /// </summary>
+    /// <param name="includePreRelease">Whether to include pre-release versions, defaults to false</param>
+    public async Task<Version[]> GetAvailableVersionsAsync(bool includePreRelease = false, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var availableVersions = await GetAvailableVersionsAsync();
+        var resource = await _repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+        var metadata = await resource.GetAllVersionsAsync(_nugetPackageName, _cache, NullLogger.Instance, CancellationToken.None);
 
-            var installedVersions = Directory.GetDirectories(Path.Combine(_runnerPath, AspireDashboard.DownloadFolder))
-                .Select(d => new Version(new DirectoryInfo(d).Name, true))
-                .ToArray();
-
-            var latestRuntimeVersion = installedRuntimes.Max();
-            var latestInstalledVersion = installedVersions.Max();
-
-            var latestAvailableVersion = availableVersions
-                    .Where(v => IsRuntimeCompatible(v, latestRuntimeVersion!))
-                    .DefaultIfEmpty()
-                    .Max()
-                ?? availableVersions.First(); // Fallback to the latest version
-
-            if (latestAvailableVersion > latestInstalledVersion)
-            {
-                _logger.LogWarning("A newer version of the Aspire Dashboard is available, downloading version {Version}", latestAvailableVersion);
-                var downloadSuccessful = await InstallAsync(latestAvailableVersion);
-                if (downloadSuccessful)
-                {
-                    _logger.LogInformation("Successfully updated the Aspire Dashboard to version {Version}", latestAvailableVersion);
-                }
-                else
-                {
-                    _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version");
-                }
-            }
-            else
-            {
-                _logger.LogInformation("The Aspire Dashboard is up to date");
-            }
-        }
-        catch
-        {
-            _logger.LogError("Failed to update the Aspire Dashboard, falling back to the installed version");
-        }
-    }
-
-    private async Task<Version> FetchLatestVersionAsync(Version[] installedRuntimes)
-    {
-        var availableVersions = await GetAvailableVersionsAsync();
-        if (availableVersions.Length == 0)
-        {
-            throw new ApplicationException("No versions of the Aspire Dashboard are available");
-        }
-
-        var latestRuntimeVersion = installedRuntimes.Max();
-        var versionToDownload = availableVersions
-                .Where(v => IsRuntimeCompatible(v, latestRuntimeVersion!))
-                .DefaultIfEmpty()
-                .Max()
-            ?? availableVersions.First(); // Fallback to the latest version
-
-        return versionToDownload;
+        return metadata
+            .Select(v => new Version(v.ToFullString(), true))
+            .Where(v => includePreRelease || !v.IsPreRelease)
+            .OrderByDescending(v => v)
+            .ToArray();
     }
 
     private static bool IsRuntimeCompatible(Version version, Version runtimeVersion)
     {
         return runtimeVersion >= AspireDashboard.MinimumRuntimeVersion && version.Major >= runtimeVersion.Major;
+    }
+
+    private static async Task<Version[]> GetCompatibleRuntimesAsync()
+    {
+        return (await DotnetCli.GetInstalledRuntimesAsync())
+            .Where(r => r.Name is AspireDashboard.RequiredRuntimeName && r.Version >= AspireDashboard.MinimumRuntimeVersion)
+            .Select(r => r.Version)
+            .ToArray();
     }
 
     private string ExtractFile(string sourcefile, string targetpath, Stream filestream)

@@ -5,7 +5,6 @@ namespace AspireRunner.Core;
 
 public class AspireDashboardManager
 {
-    private readonly string _runnerPath;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AspireDashboardManager> _logger;
 
@@ -15,11 +14,6 @@ public class AspireDashboardManager
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
-        _runnerPath = GetRunnerPath();
-        if (!Directory.Exists(_runnerPath))
-        {
-            Directory.CreateDirectory(_runnerPath);
-        }
     }
 
     public async Task<AspireDashboard?> GetDashboardAsync(AspireDashboardOptions options)
@@ -41,13 +35,19 @@ public class AspireDashboardManager
             return null;
         }
 
+        var runnerPath = GetRunnerPath();
+        if (!Directory.Exists(runnerPath))
+        {
+            Directory.CreateDirectory(runnerPath);
+        }
+
         if (VersionRange.TryParse(options.Runner.PreferredVersion, loose: true, out var preferredVersion))
         {
             var preferredDashboard = installedDashboards.FirstOrDefault(d => preferredVersion.IsSatisfied(d.Version));
             if (preferredDashboard is not null)
             {
                 _logger.LogTrace("Aspire Dashboard installation path: '{AspirePath}'", preferredDashboard.Path);
-                return new AspireDashboard(_runnerPath, preferredDashboard.Version, preferredDashboard.Path, options, _loggerFactory.CreateLogger<AspireDashboard>());
+                return new AspireDashboard(runnerPath, preferredDashboard.Version, preferredDashboard.Path, options, _loggerFactory.CreateLogger<AspireDashboard>());
             }
 
             _logger.LogWarning("Preferred Dashboard Version {PreferredVersion} not found, falling back to latest version installed", options.Runner.PreferredVersion);
@@ -56,7 +56,7 @@ public class AspireDashboardManager
         var latestDashboard = installedDashboards.MaxBy(d => d.Version)!;
         _logger.LogTrace("Aspire Dashboard installation path: '{AspirePath}'", latestDashboard.Path);
 
-        return new AspireDashboard(_runnerPath, latestDashboard.Version, latestDashboard.Path, options, _loggerFactory.CreateLogger<AspireDashboard>());
+        return new AspireDashboard(runnerPath, latestDashboard.Version, latestDashboard.Path, options, _loggerFactory.CreateLogger<AspireDashboard>());
     }
 
     public static string GetRunnerPath()
@@ -70,9 +70,14 @@ public class AspireDashboardManager
         return runnerPath;
     }
 
-    private DashboardInstallationInfo[] GetInstalledDashboards()
+    public static Version[] GetInstalledVersions()
     {
-        var dashboardsFolder = Path.Combine(_runnerPath, AspireDashboard.DownloadFolder);
+        return [..GetInstalledDashboards().Select(d => d.Version)];
+    }
+
+    private static DashboardInstallationInfo[] GetInstalledDashboards()
+    {
+        var dashboardsFolder = Path.Combine(GetRunnerPath(), AspireDashboard.DownloadFolder);
         if (!Directory.Exists(dashboardsFolder))
         {
             return [];
@@ -87,7 +92,7 @@ public class AspireDashboardManager
         ];
     }
 
-    private async Task<Version[]> GetCompatibleRuntimesAsync()
+    private static async Task<Version[]> GetCompatibleRuntimesAsync()
     {
         return (await DotnetCli.GetInstalledRuntimesAsync())
             .Where(r => r.Name is AspireDashboard.RequiredRuntimeName && r.Version >= AspireDashboard.MinimumRuntimeVersion)
