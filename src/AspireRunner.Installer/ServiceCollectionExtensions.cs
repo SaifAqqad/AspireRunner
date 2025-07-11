@@ -1,5 +1,4 @@
-﻿using AspireRunner.Core.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace AspireRunner.Installer;
 
