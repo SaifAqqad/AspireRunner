@@ -42,14 +42,14 @@ public partial class AspireDashboard
 
     public bool IsRunning => _dashboardProcess.IsRunning();
 
-    internal AspireDashboard(string runnerPath, Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
+    internal AspireDashboard(Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
     {
         Version = version;
         Options = options;
 
         _logger = logger;
         _dllPath = dllPath;
-        _runnerPath = runnerPath;
+        _runnerPath = GetRunnerPath();
         _environmentVariables = options.ToEnvironmentVariables();
         _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerPath), InstanceLock);
     }

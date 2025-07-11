@@ -8,7 +8,7 @@ namespace AspireRunner.AspNetCore;
 public class AspireDashboardService(
     ILogger<AspireDashboardService> logger,
     IOptions<AspireDashboardOptions> options,
-    AspireDashboardManager dashboardManager) : IHostedService
+    AspireDashboardFactory dashboardFactory) : IHostedService
 {
     private AspireDashboard? _aspireDashboard;
 
@@ -21,7 +21,7 @@ public class AspireDashboardService(
             {
                 logger.LogInformation("Starting the Aspire Dashboard Service");
 
-                _aspireDashboard = await dashboardManager.GetDashboardAsync(options.Value);
+                _aspireDashboard = await dashboardFactory.CreateDashboardAsync(options.Value);
                 if (_aspireDashboard is null)
                 {
                     logger.LogWarning("The Aspire Dashboard is not installed, use the Installer nuget package or dotnet tool to install the dashboard.");

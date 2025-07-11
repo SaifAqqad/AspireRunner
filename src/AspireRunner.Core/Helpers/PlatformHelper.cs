@@ -20,46 +20,57 @@ public static class PlatformHelper
     private static string? _osIdentifier;
     private static string? _linuxUrlOpener;
 
-    public static string Rid()
+    /// <summary>
+    /// Runtime identifier.
+    /// <see href="https://learn.microsoft.com/en-us/dotnet/core/rid-catalog">docs</see>
+    /// </summary>
+    public static string Rid
     {
-        if (_rid is not null)
+        get
         {
-            return _rid;
-        }
+            if (_rid is not null)
+            {
+                return _rid;
+            }
 
-        return _rid = $"{OsIdentifier()}-{RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant()}";
+            return _rid = $"{OsIdentifier}-{RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant()}";
+        }
     }
 
-    public static string OsIdentifier()
+    /// <summary>
+    /// Returns the OS identifier (computed at runtime).
+    /// </summary>
+    public static string OsIdentifier
     {
-        if (_osIdentifier is not null)
+        get
         {
-            return _osIdentifier;
-        }
+            if (_osIdentifier is not null)
+            {
+                return _osIdentifier;
+            }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return _osIdentifier = "win";
-        }
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return _osIdentifier = "win";
+            }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return _osIdentifier = "linux";
-        }
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return _osIdentifier = "linux";
+            }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            return _osIdentifier = "osx";
-        }
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return _osIdentifier = "osx";
+            }
 
-        return _osIdentifier = "unknown";
+            return _osIdentifier = "unknown";
+        }
     }
 
-    public static string AsExecutable(string fileName)
-    {
-        return OsIdentifier() is "win" ? $"{fileName}.exe" : fileName;
-    }
-
+    /// <summary>
+    /// Checks if the current process is running inside WSL.
+    /// </summary>
     public static bool IsWsl()
     {
         if (_isWsl.HasValue)
@@ -67,7 +78,7 @@ public static class PlatformHelper
             return _isWsl.Value;
         }
 
-        if (OsIdentifier() is not "linux")
+        if (OsIdentifier is not "linux")
         {
             return (_isWsl = false).Value;
         }
@@ -82,21 +93,20 @@ public static class PlatformHelper
     }
 
     /// <summary>
-    /// Returns the platform-specific executable and arguments to open a URL.
+    /// Returns the executable and arguments required to open the passed URL based on the current platform.
     /// </summary>
     /// <remarks>
     /// On Linux, the method will try to find a suitable URL opener from the system's <c>PATH</c>.
     /// </remarks>
     public static (string Executable, string[] Arguments)? GetUrlOpener(string url)
     {
-        var osIdentifier = OsIdentifier();
-        if (osIdentifier is "win" || IsWsl())
+        if (OsIdentifier is "win" || IsWsl())
         {
             var cmdEscapedUrl = url.Replace("&", "^&").Replace(@"""", @"""""");
             return ("cmd.exe", ["/c", $"start {cmdEscapedUrl}"]);
         }
 
-        if (osIdentifier is "osx")
+        if (OsIdentifier is "osx")
         {
             return ("open", [url]);
         }
@@ -120,4 +130,8 @@ public static class PlatformHelper
         // setsid is used to detach the launched process from the runner
         return ("setsid", [_linuxUrlOpener, url]);
     }
+
+    internal static string AsExecutable(this string fileName) => OsIdentifier is "win" ? $"{fileName}.exe" : fileName;
+
+    internal static string GetUserProfileFolder() => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 }

@@ -10,7 +10,7 @@ public static class AspireDashboardExtensions
         services.AddOptions<AspireDashboardOptions>()
             .Configure(options => configureOptions?.Invoke(options));
 
-        services.AddSingleton<AspireDashboardManager>();
+        services.AddSingleton<AspireDashboardFactory>();
         services.AddHostedService<AspireDashboardService>();
 
         return services;

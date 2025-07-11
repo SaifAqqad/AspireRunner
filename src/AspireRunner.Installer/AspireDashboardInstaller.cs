@@ -16,15 +16,15 @@ public class AspireDashboardInstaller
 
     private readonly string _runnerPath;
     private readonly string _nugetPackageName;
-    private readonly SourceCacheContext _cache;
-    private readonly SourceRepository _repository;
+    private readonly SourceCacheContext _nugetCache;
+    private readonly SourceRepository _nugetRepository;
     private readonly ILogger<AspireDashboardInstaller> _logger;
 
     public AspireDashboardInstaller(ILogger<AspireDashboardInstaller>? logger)
     {
-        _cache = new SourceCacheContext();
-        _runnerPath = AspireDashboardManager.GetRunnerPath();
-        _nugetPackageName = $"{SdkName}.{PlatformHelper.Rid()}";
+        _nugetCache = new SourceCacheContext();
+        _runnerPath = AspireDashboard.GetRunnerPath();
+        _nugetPackageName = $"{SdkName}.{PlatformHelper.Rid}";
         _logger = logger ?? NullLogger<AspireDashboardInstaller>.Instance;
 
         var repoUrl = EnvironmentVariables.NugetRepoUrl;
@@ -33,12 +33,17 @@ public class AspireDashboardInstaller
             repoUrl = DefaultRepoUrl;
         }
 
-        _repository = Repository.Factory.GetCoreV3(repoUrl);
+        _nugetRepository = Repository.Factory.GetCoreV3(repoUrl);
     }
 
-    public async Task<(bool Success, Version? Installed, Version Latest)> EnsureLatestAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Checks if the latest version of the dashboard is installed, and if not, installs it to the runner's path.
+    /// </summary>
+    /// <returns>A tuple containing a success flag, the latest version available, and the currently installed version (if any).</returns>
+    /// <exception cref="ApplicationException">Thrown If no versions are fetched from the nuget repo, could be caused by a network issue or the repo simply not having any versions of the package available</exception>
+    public async Task<(bool Success, Version Latest, Version? Installed)> EnsureLatestAsync(CancellationToken cancellationToken = default)
     {
-        var latestRuntimeVersion = (await GetCompatibleRuntimesAsync()).Max();
+        var latestRuntimeVersion = (await AspireDashboard.GetCompatibleRuntimesAsync()).Max();
 
         var availableVersions = await GetAvailableVersionsAsync(cancellationToken: cancellationToken);
         if (availableVersions.Length == 0)
@@ -51,29 +56,28 @@ public class AspireDashboardInstaller
                 .Max()
             ?? availableVersions.First(); // Fallback to the latest version
 
-        var latestInstalled = AspireDashboardManager.GetInstalledVersions().Max();
+        var latestInstalled = AspireDashboard.GetInstalledVersions().Max();
         if (latestInstalled == latestCompatible)
         {
-            // Dashboard is up-to-date
-            return (true, latestInstalled, latestCompatible);
+            // Dashboard is up to date
+            return (true, latestCompatible, latestInstalled);
         }
 
         var success = await InstallAsync(latestCompatible, cancellationToken);
-        return (success, latestInstalled, latestCompatible);
+        return (success, latestCompatible, latestInstalled);
     }
 
     /// <summary>
-    /// Downloads and installs the dashboard to the specified destination path.
+    /// Downloads and installs the specified dashboard version to the runner's path.
     /// </summary>
-    /// <param name="version">The version of the dashboard</param>
-    /// <param name="destinationPath">The destination path to extract the package contents in</param>
+    /// <param name="version">The dashboard version to install</param>
     /// <returns><c>true</c> if the dashboard was installed successfully, <c>false</c> otherwise</returns>
     public async Task<bool> InstallAsync(Version version, CancellationToken cancellationToken = default)
     {
         try
         {
             using var packageStream = new MemoryStream();
-            var resource = await _repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+            var resource = await _nugetRepository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
 
             var destinationPath = Path.Combine(_runnerPath, version.ToString());
             _logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", _nugetPackageName, version, destinationPath);
@@ -82,7 +86,7 @@ public class AspireDashboardInstaller
                 _nugetPackageName,
                 new NuGetVersion(version.ToString()),
                 packageStream,
-                _cache,
+                _nugetCache,
                 NullLogger.Instance,
                 CancellationToken.None
             );
@@ -105,52 +109,83 @@ public class AspireDashboardInstaller
     }
 
     /// <summary>
+    /// Removes the specified dashboard version from the runner's path if it's installed.
+    /// </summary>
+    /// <param name="version">The dashboard version to remove</param>
+    /// <returns><c>true</c> If the version is removed successfully, <c>false</c> otherwise</returns>
+    public async Task<bool> RemoveAsync(Version version, CancellationToken cancellationToken)
+    {
+        var installDirectory = Path.Combine(_runnerPath, version.ToString());
+        if (!Directory.Exists(installDirectory))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            await Task.Factory.StartNew(p => Directory.Delete((string)p!, recursive: true), installDirectory, cancellationToken);
+            _logger.LogTrace("Removed {PackageName} {Version} from {Path}", _nugetPackageName, version, _runnerPath);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove {PackageName} {Version} from {Path}", _nugetPackageName, version, _runnerPath);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Returns the available dashboard versions in descending order (newest to oldest).
     /// </summary>
     /// <param name="includePreRelease">Whether to include pre-release versions, defaults to false</param>
     public async Task<Version[]> GetAvailableVersionsAsync(bool includePreRelease = false, CancellationToken cancellationToken = default)
     {
-        var resource = await _repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
-        var metadata = await resource.GetAllVersionsAsync(_nugetPackageName, _cache, NullLogger.Instance, CancellationToken.None);
+        try
+        {
+            var resource = await _nugetRepository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+            var metadata = await resource.GetAllVersionsAsync(_nugetPackageName, _nugetCache, NullLogger.Instance, CancellationToken.None);
 
-        return metadata
-            .Select(v => new Version(v.ToFullString(), true))
-            .Where(v => includePreRelease || !v.IsPreRelease)
-            .OrderByDescending(v => v)
-            .ToArray();
+            return metadata
+                .Select(v => new Version(v.ToFullString(), true))
+                .Where(v => includePreRelease || !v.IsPreRelease)
+                .OrderByDescending(v => v)
+                .ToArray();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private string ExtractFile(string sourceFile, string targetPath, Stream fileStream)
+    {
+        try
+        {
+            _logger.LogTrace("Extracting {SourceFile} to {TargetPath}", sourceFile, targetPath);
+
+            // Ensure the directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+
+            using var file = File.Create(targetPath);
+            fileStream.CopyTo(file);
+
+            return targetPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Failed to extract {SourceFile} to {TargetPath}, {Exception}", sourceFile, targetPath, ex.Message);
+            throw;
+        }
     }
 
     private static bool IsRuntimeCompatible(Version version, Version runtimeVersion)
     {
         return runtimeVersion >= AspireDashboard.MinimumRuntimeVersion && version.Major >= runtimeVersion.Major;
-    }
-
-    private static async Task<Version[]> GetCompatibleRuntimesAsync()
-    {
-        return (await DotnetCli.GetInstalledRuntimesAsync())
-            .Where(r => r.Name is AspireDashboard.RequiredRuntimeName && r.Version >= AspireDashboard.MinimumRuntimeVersion)
-            .Select(r => r.Version)
-            .ToArray();
-    }
-
-    private string ExtractFile(string sourcefile, string targetpath, Stream filestream)
-    {
-        try
-        {
-            _logger.LogTrace("Extracting {SourceFile} to {TargetPath}", sourcefile, targetpath);
-
-            // Ensure the directory exists
-            Directory.CreateDirectory(Path.GetDirectoryName(targetpath)!);
-
-            using var file = File.Create(targetpath);
-            filestream.CopyTo(file);
-
-            return targetpath;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("Failed to extract {SourceFile} to {TargetPath}, {Exception}", sourcefile, targetpath, ex.Message);
-            throw;
-        }
     }
 }

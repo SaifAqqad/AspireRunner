@@ -5,9 +5,9 @@ namespace AspireRunner.Core.Helpers;
 
 public static partial class DotnetCli
 {
-    public static readonly string DataPath = SystemPath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
+    public static readonly string DataPath = SystemPath.Combine(PlatformHelper.GetUserProfileFolder(), ".dotnet");
 
-    public static readonly string ExecutableName = PlatformHelper.AsExecutable("dotnet");
+    public static readonly string ExecutableName = "dotnet".AsExecutable();
 
     public static readonly string Path = GetCliPath();
 
