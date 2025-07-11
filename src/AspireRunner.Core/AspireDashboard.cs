@@ -193,7 +193,7 @@ public partial class AspireDashboard
             return;
         }
 
-        if (DashboardLaunchUrlRegex.Match(output) is { Success: true } match)
+        if (DashboardLaunchUrlRegex().Match(output) is { Success: true } match)
         {
             var url = match.Groups["url"].Value;
             if (Options.Runner.LaunchBrowser)
@@ -204,7 +204,7 @@ public partial class AspireDashboard
             DashboardStarted?.Invoke(url);
         }
 
-        if (OtlpEndpointRegex.Match(output) is { Success: true } otlpMatch)
+        if (OtlpEndpointRegex().Match(output) is { Success: true } otlpMatch)
         {
             var url = otlpMatch.Groups["url"].Value;
             var protocol = otlpMatch.Groups["protocol"].Value;
