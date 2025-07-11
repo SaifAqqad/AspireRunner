@@ -1,6 +1,6 @@
 ﻿namespace AspireRunner.Core;
 
-public partial class AspireDashboard
+public partial class Dashboard
 {
     public const string DownloadFolder = "dashboard";
 

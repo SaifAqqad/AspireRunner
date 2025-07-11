@@ -6,7 +6,7 @@ namespace AspireRunner.Core;
 /// Configuration options used by the Aspire Dashboard.
 /// <see href="https://github.com/dotnet/aspire/tree/v9.0.0/src/Aspire.Dashboard/Configuration">Aspire.Dashboard/Configuration</see>
 /// </summary>
-public sealed record AspireDashboardOptions
+public sealed record DashboardOptions
 {
     /// <summary>
     /// The application name to be displayed in the dashboard UI.

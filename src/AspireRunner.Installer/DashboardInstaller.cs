@@ -1,5 +1,4 @@
-﻿using AspireRunner.Core;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NuGet.Packaging;
 using NuGet.Protocol;
@@ -9,7 +8,7 @@ using NullLogger = NuGet.Common.NullLogger;
 
 namespace AspireRunner.Installer;
 
-public class AspireDashboardInstaller
+public class DashboardInstaller : IDashboardInstaller
 {
     private const string SdkName = "Aspire.Dashboard.Sdk";
     private const string DefaultRepoUrl = "https://api.nuget.org/v3/index.json";
@@ -18,14 +17,14 @@ public class AspireDashboardInstaller
     private readonly string _nugetPackageName;
     private readonly SourceCacheContext _nugetCache;
     private readonly SourceRepository _nugetRepository;
-    private readonly ILogger<AspireDashboardInstaller> _logger;
+    private readonly ILogger<DashboardInstaller> _logger;
 
-    public AspireDashboardInstaller(ILogger<AspireDashboardInstaller>? logger)
+    public DashboardInstaller(ILogger<DashboardInstaller>? logger)
     {
         _nugetCache = new SourceCacheContext();
-        _runnerPath = AspireDashboard.GetRunnerPath();
+        _runnerPath = Dashboard.GetRunnerPath();
         _nugetPackageName = $"{SdkName}.{PlatformHelper.Rid}";
-        _logger = logger ?? NullLogger<AspireDashboardInstaller>.Instance;
+        _logger = logger ?? NullLogger<DashboardInstaller>.Instance;
 
         var repoUrl = EnvironmentVariables.NugetRepoUrl;
         if (string.IsNullOrWhiteSpace(repoUrl))
@@ -36,14 +35,9 @@ public class AspireDashboardInstaller
         _nugetRepository = Repository.Factory.GetCoreV3(repoUrl);
     }
 
-    /// <summary>
-    /// Checks if the latest version of the dashboard is installed, and if not, installs it to the runner's path.
-    /// </summary>
-    /// <returns>A tuple containing a success flag, the latest version available, and the currently installed version (if any).</returns>
-    /// <exception cref="ApplicationException">Thrown If no versions are fetched from the nuget repo, could be caused by a network issue or the repo simply not having any versions of the package available</exception>
     public async Task<(bool Success, Version Latest, Version? Installed)> EnsureLatestAsync(CancellationToken cancellationToken = default)
     {
-        var latestRuntimeVersion = (await AspireDashboard.GetCompatibleRuntimesAsync()).Max();
+        var latestRuntimeVersion = (await Dashboard.GetCompatibleRuntimesAsync()).Max();
 
         var availableVersions = await GetAvailableVersionsAsync(cancellationToken: cancellationToken);
         if (availableVersions.Length == 0)
@@ -56,7 +50,7 @@ public class AspireDashboardInstaller
                 .Max()
             ?? availableVersions.First(); // Fallback to the latest version
 
-        var latestInstalled = AspireDashboard.GetInstalledVersions().Max();
+        var latestInstalled = Dashboard.GetInstalledVersions().Max();
         if (latestInstalled == latestCompatible)
         {
             // Dashboard is up to date
@@ -67,11 +61,6 @@ public class AspireDashboardInstaller
         return (success, latestCompatible, latestInstalled);
     }
 
-    /// <summary>
-    /// Downloads and installs the specified dashboard version to the runner's path.
-    /// </summary>
-    /// <param name="version">The dashboard version to install</param>
-    /// <returns><c>true</c> if the dashboard was installed successfully, <c>false</c> otherwise</returns>
     public async Task<bool> InstallAsync(Version version, CancellationToken cancellationToken = default)
     {
         try
@@ -83,12 +72,12 @@ public class AspireDashboardInstaller
             _logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", _nugetPackageName, version, destinationPath);
 
             var success = await resource.CopyNupkgToStreamAsync(
-                _nugetPackageName,
-                new NuGetVersion(version.ToString()),
-                packageStream,
-                _nugetCache,
-                NullLogger.Instance,
-                CancellationToken.None
+                id: _nugetPackageName,
+                version: new NuGetVersion(version.ToString()),
+                destination: packageStream,
+                cacheContext: _nugetCache,
+                logger: NullLogger.Instance,
+                cancellationToken: cancellationToken
             );
 
             if (!success || cancellationToken.IsCancellationRequested)
@@ -108,11 +97,6 @@ public class AspireDashboardInstaller
         }
     }
 
-    /// <summary>
-    /// Removes the specified dashboard version from the runner's path if it's installed.
-    /// </summary>
-    /// <param name="version">The dashboard version to remove</param>
-    /// <returns><c>true</c> If the version is removed successfully, <c>false</c> otherwise</returns>
     public async Task<bool> RemoveAsync(Version version, CancellationToken cancellationToken)
     {
         var installDirectory = Path.Combine(_runnerPath, version.ToString());
@@ -140,10 +124,6 @@ public class AspireDashboardInstaller
         }
     }
 
-    /// <summary>
-    /// Returns the available dashboard versions in descending order (newest to oldest).
-    /// </summary>
-    /// <param name="includePreRelease">Whether to include pre-release versions, defaults to false</param>
     public async Task<Version[]> GetAvailableVersionsAsync(bool includePreRelease = false, CancellationToken cancellationToken = default)
     {
         try
@@ -186,6 +166,6 @@ public class AspireDashboardInstaller
 
     private static bool IsRuntimeCompatible(Version version, Version runtimeVersion)
     {
-        return runtimeVersion >= AspireDashboard.MinimumRuntimeVersion && version.Major >= runtimeVersion.Major;
+        return runtimeVersion >= Dashboard.MinimumRuntimeVersion && version.Major >= runtimeVersion.Major;
     }
 }

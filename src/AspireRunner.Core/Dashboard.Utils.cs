@@ -4,7 +4,7 @@ using AspireRunner.Core.Models;
 namespace AspireRunner.Core;
 
 // Only static methods should go here :)
-public partial class AspireDashboard
+public partial class Dashboard
 {
     /// <summary>
     /// Returns the path to the Aspire Runner folder.

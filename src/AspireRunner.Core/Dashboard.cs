@@ -7,7 +7,7 @@ using System.Text;
 
 namespace AspireRunner.Core;
 
-public partial class AspireDashboard
+public partial class Dashboard : IDashboard
 {
     private StringBuilder? _lastError;
     private DateTimeOffset? _lastErrorTime;
@@ -16,33 +16,23 @@ public partial class AspireDashboard
 
     private readonly string _dllPath;
     private readonly string _runnerPath;
-    private readonly ILogger<AspireDashboard> _logger;
+    private readonly ILogger<Dashboard> _logger;
     private readonly FileDistributedLock _instanceLock;
     private readonly IDictionary<string, string?> _environmentVariables;
 
-    public Version Version { get; private set; }
+    public Version Version { get; }
 
-    public AspireDashboardOptions Options { get; }
+    public DashboardOptions Options { get; }
 
-    /// <summary>
-    /// Triggered when the Aspire Dashboard has started and the UI is ready.
-    /// <br/>
-    /// The dashboard URL (including the browser token) is passed to the event handler.
-    /// </summary>
     public event Action<string>? DashboardStarted;
 
-    /// <summary>
-    /// Triggered when the OTLP endpoint is ready to receive telemetry data.
-    /// <br/>
-    /// The OTLP endpoint URL and protocol are passed to the event handler.
-    /// </summary>
     public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
 
     public bool HasErrors { get; private set; }
 
     public bool IsRunning => _dashboardProcess.IsRunning();
 
-    internal AspireDashboard(Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
+    internal Dashboard(Version version, string dllPath, DashboardOptions options, ILogger<Dashboard> logger)
     {
         Version = version;
         Options = options;
@@ -77,6 +67,37 @@ public partial class AspireDashboard
                 return;
             }
         } while (retryCount++ < Options.Runner.RunRetryCount && !cancellationToken.IsCancellationRequested);
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsRunning || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            _stopRequested = true;
+            _logger.LogInformation("Stopping the Aspire Dashboard...");
+            await Task.Run(() => _dashboardProcess?.Kill(true), cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            _logger.LogWarning("The Aspire Dashboard has already been stopped");
+        }
+
+        _dashboardProcess = null;
+    }
+
+    public Task WaitForExitAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsRunning || cancellationToken.IsCancellationRequested)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _dashboardProcess!.WaitForExitAsync(cancellationToken);
     }
 
     private async Task<bool> TryStartProcessAsync(CancellationToken cancellationToken = default)
@@ -119,44 +140,6 @@ public partial class AspireDashboard
             _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
             return false;
         }
-    }
-
-    /// <summary>
-    /// Stops the Aspire Dashboard process.
-    /// </summary>
-    public void Stop()
-    {
-        if (!IsRunning)
-        {
-            return;
-        }
-
-        try
-        {
-            _stopRequested = true;
-            _logger.LogInformation("Stopping the Aspire Dashboard...");
-            _dashboardProcess?.Kill(true);
-        }
-        catch (InvalidOperationException)
-        {
-            _logger.LogWarning("The Aspire Dashboard has already been stopped");
-        }
-
-        _dashboardProcess = null;
-    }
-
-    /// <summary>
-    /// Returns a task that completes when the Aspire Dashboard process exits or when the cancellation token is triggered.
-    /// </summary>
-    /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
-    public Task WaitForExitAsync(CancellationToken cancellationToken = default)
-    {
-        if (!IsRunning || cancellationToken.IsCancellationRequested)
-        {
-            return Task.CompletedTask;
-        }
-
-        return _dashboardProcess!.WaitForExitAsync(cancellationToken);
     }
 
     private void RegisterProcessExitHandler(string? _ = null)
