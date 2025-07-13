@@ -34,7 +34,7 @@
 
     <ItemGroup>
         <PackageReference Include="DistributedLock.FileSystem" Version="1.0.3"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
         <PackageReference Include="SemanticVersioning" Version="3.0.0" />
     </ItemGroup>
 </Project>
