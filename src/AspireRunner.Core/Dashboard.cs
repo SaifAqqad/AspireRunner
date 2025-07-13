@@ -178,7 +178,7 @@ public partial class Dashboard : IDashboard
 
         if (DashboardLaunchUrlRegex().Match(output) is { Success: true } match)
         {
-            var url = match.Groups["url"].Value;
+            var url = FormatUrl(match.Groups["url"].Value);
             if (Options.Runner.LaunchBrowser)
             {
                 _ = LaunchBrowserAsync(url);
@@ -189,7 +189,7 @@ public partial class Dashboard : IDashboard
 
         if (OtlpEndpointRegex().Match(output) is { Success: true } otlpMatch)
         {
-            var url = otlpMatch.Groups["url"].Value;
+            var url = FormatUrl(otlpMatch.Groups["url"].Value);
             var protocol = otlpMatch.Groups["protocol"].Value;
 
             OtlpEndpointReady?.Invoke((url, protocol));

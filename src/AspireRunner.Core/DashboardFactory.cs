@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AspireRunner.Core;
 
-public class DashboardFactory : IDashboardFactory
+public partial class DashboardFactory : IDashboardFactory
 {
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<DashboardFactory> _logger;
@@ -16,10 +16,7 @@ public class DashboardFactory : IDashboardFactory
     public async Task<Dashboard?> CreateDashboardAsync(DashboardOptions options)
     {
         var compatibleRuntimes = await Dashboard.GetCompatibleRuntimesAsync();
-        if (_logger.IsEnabled(LogLevel.Trace))
-        {
-            _logger.LogTrace("Found compatible runtimes: {CompatibleRuntimes}", string.Join(", ", compatibleRuntimes.Select(v => $"{v}")));
-        }
+        LogCompatibleRuntimes(compatibleRuntimes);
 
         if (compatibleRuntimes.Length == 0)
         {
@@ -37,15 +34,15 @@ public class DashboardFactory : IDashboardFactory
             var preferredDashboard = installedDashboards.FirstOrDefault(d => preferredVersion.IsSatisfied(d.Version));
             if (preferredDashboard is not null)
             {
-                _logger.LogTrace("Aspire Dashboard installation path: '{AspirePath}'", preferredDashboard.Path);
+                LogInstallationPath(preferredDashboard.Path);
                 return new Dashboard(preferredDashboard.Version, preferredDashboard.Path, options, _loggerFactory.CreateLogger<Dashboard>());
             }
 
-            _logger.LogWarning("Preferred Dashboard Version {PreferredVersion} not found, falling back to latest version installed", options.Runner.PreferredVersion);
+            WarnPreferredVersionNotFound(options.Runner.PreferredVersion);
         }
 
         var latestDashboard = installedDashboards.MaxBy(d => d.Version)!;
-        _logger.LogTrace("Aspire Dashboard installation path: '{AspirePath}'", latestDashboard.Path);
+        LogInstallationPath(latestDashboard.Path);
 
         return new Dashboard(latestDashboard.Version, latestDashboard.Path, options, _loggerFactory.CreateLogger<Dashboard>());
     }

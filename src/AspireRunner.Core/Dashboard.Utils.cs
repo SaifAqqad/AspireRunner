@@ -70,4 +70,15 @@ public partial class Dashboard
             }
         }
     }
+
+    private string FormatUrl(string value)
+    {
+        const string? defaultIpv4 = "127.0.0.1";
+        const string? defaultIpv6 = "[::1]";
+
+        return value.Replace("*", defaultIpv4)
+            .Replace("+", defaultIpv4)
+            .Replace("0.0.0.0", defaultIpv4)
+            .Replace("[::]", defaultIpv6);
+    }
 }
