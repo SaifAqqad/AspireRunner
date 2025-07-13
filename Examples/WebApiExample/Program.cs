@@ -1,4 +1,5 @@
 using AspireRunner.AspNetCore;
+using AspireRunner.Installer;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -21,6 +22,7 @@ ConfigureOtel(builder.Services, builder.Configuration.GetSection("OpenTelemetry"
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddAspireDashboard(options => builder.Configuration.GetSection("AspireDashboard").Bind(options));
+    builder.Services.AddAspireDashboardInstaller();
 }
 
 var app = builder.Build();

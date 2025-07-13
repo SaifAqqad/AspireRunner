@@ -17,6 +17,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\AspireRunner.AspNetCore\AspireRunner.AspNetCore.csproj" />
+      <ProjectReference Include="..\..\src\AspireRunner.Installer\AspireRunner.Installer.csproj" />
     </ItemGroup>
 
 </Project>

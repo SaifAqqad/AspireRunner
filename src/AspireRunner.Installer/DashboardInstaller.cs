@@ -13,7 +13,7 @@ public class DashboardInstaller : IDashboardInstaller
     private const string SdkName = "Aspire.Dashboard.Sdk";
     private const string DefaultRepoUrl = "https://api.nuget.org/v3/index.json";
 
-    private readonly string _runnerPath;
+    private readonly string _downloadPath;
     private readonly string _nugetPackageName;
     private readonly SourceCacheContext _nugetCache;
     private readonly SourceRepository _nugetRepository;
@@ -22,9 +22,9 @@ public class DashboardInstaller : IDashboardInstaller
     public DashboardInstaller(ILogger<DashboardInstaller>? logger)
     {
         _nugetCache = new SourceCacheContext();
-        _runnerPath = Dashboard.GetRunnerPath();
         _nugetPackageName = $"{SdkName}.{PlatformHelper.Rid}";
         _logger = logger ?? NullLogger<DashboardInstaller>.Instance;
+        _downloadPath = Path.Combine(Dashboard.GetRunnerPath(), Dashboard.DownloadFolder);
 
         var repoUrl = EnvironmentVariables.NugetRepoUrl;
         if (string.IsNullOrWhiteSpace(repoUrl))
@@ -81,7 +81,7 @@ public class DashboardInstaller : IDashboardInstaller
         try
         {
             using var packageStream = new MemoryStream();
-            var destinationPath = Path.Combine(_runnerPath, version.ToString());
+            var destinationPath = Path.Combine(_downloadPath, version.ToString());
             var resource = await _nugetRepository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
 
             var success = await resource.CopyNupkgToStreamAsync(
@@ -106,14 +106,14 @@ public class DashboardInstaller : IDashboardInstaller
         }
         catch (Exception e)
         {
-            _logger.LogError("Failed to download {PackageName} {Version} to {Path}, {Exception}", _nugetPackageName, version, _runnerPath, e.Message);
+            _logger.LogError("Failed to download {PackageName} {Version} to {Path}, {Exception}", _nugetPackageName, version, _downloadPath, e.Message);
             return false;
         }
     }
 
     public async Task<bool> RemoveAsync(Version version, CancellationToken cancellationToken)
     {
-        var installDirectory = Path.Combine(_runnerPath, version.ToString());
+        var installDirectory = Path.Combine(_downloadPath, version.ToString());
         if (!Directory.Exists(installDirectory))
         {
             return false;
@@ -127,13 +127,13 @@ public class DashboardInstaller : IDashboardInstaller
             }
 
             await Task.Factory.StartNew(p => Directory.Delete((string)p!, recursive: true), installDirectory, cancellationToken);
-            _logger.LogInformation("Removed {PackageName} version {Version} from {Path}", _nugetPackageName, version, _runnerPath);
+            _logger.LogInformation("Removed {PackageName} version {Version} from {Path}", _nugetPackageName, version, _downloadPath);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to remove {PackageName} {Version} from {Path}", _nugetPackageName, version, _runnerPath);
+            _logger.LogError(ex, "Failed to remove {PackageName} {Version} from {Path}", _nugetPackageName, version, _downloadPath);
             return false;
         }
     }
