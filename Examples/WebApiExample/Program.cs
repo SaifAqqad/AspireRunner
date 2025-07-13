@@ -5,20 +5,29 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddOpenApi();
 
 // Configure OpenTelemetry with the provided configuration
-ConfigureOtel(builder.Services, builder.Configuration.GetSection("OpenTelemetry"));
+var otelConfig = builder.Configuration.GetSection("OpenTelemetry");
+builder.Services.AddOpenTelemetry()
+    .WithTracing(traceBuilder => traceBuilder
+        .AddAspNetCoreInstrumentation()
+        .AddOtlpExporter(ConfigureOtelExporter))
+    .WithMetrics(metricsBuilder => metricsBuilder
+        .AddAspNetCoreInstrumentation()
+        .AddOtlpExporter(ConfigureOtelExporter))
+    .WithLogging(logsBuilder => logsBuilder
+        .AddOtlpExporter(ConfigureOtelExporter))
+    .ConfigureResource(resourceBuilder => resourceBuilder
+        .AddService("WebApiExample"));
 
-// Add the aspire dashboard to the application
+// Add the Aspire Dashboard and installer to the application
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddAspireDashboard(options => builder.Configuration.GetSection("AspireDashboard").Bind(options));
@@ -27,55 +36,44 @@ if (builder.Environment.IsDevelopment())
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI();
+app.MapOpenApi();
+app.MapScalarApiReference(scalar => scalar.WithLayout(ScalarLayout.Classic));
 
 app.UseHttpsRedirection();
-app.UseAuthorization();
 
-app.MapControllers();
-
-await app.RunAsync();
-return;
-
-static void ConfigureOtel(IServiceCollection services, IConfiguration otelConfig)
+var summaries = new[]
 {
-    services.AddOpenTelemetry()
-        .WithTracing(traceBuilder => traceBuilder
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddOtlpExporter(config =>
-            {
-                config.Endpoint = new Uri(otelConfig["Endpoint"]!);
-                config.Protocol = OtlpExportProtocol.Grpc;
-            })
-        )
-        .WithMetrics(metricsBuilder => metricsBuilder
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddOtlpExporter(config =>
-            {
-                config.Endpoint = new Uri(otelConfig["Endpoint"]!);
-                config.Protocol = OtlpExportProtocol.Grpc;
-            })
-        )
-        .ConfigureResource(resourceBuilder => resourceBuilder
-            .AddService("WebApiExample")
-        );
+    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+};
 
-    services.AddLogging(loggingBuilder => loggingBuilder
-        .AddOpenTelemetry(otelLogging =>
+app.MapGet("/weatherforecast", () => Enumerable
+        .Range(1, 5)
+        .Select(index => new WeatherForecast
         {
-            otelLogging.IncludeScopes = true;
-            otelLogging.ParseStateValues = true;
-            otelLogging.AddConsoleExporter();
-
-            otelLogging.AddOtlpExporter(config =>
-            {
-                config.Endpoint = new Uri(otelConfig["Endpoint"]!);
-                config.Protocol = OtlpExportProtocol.Grpc;
-            });
+            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+            TemperatureC = Random.Shared.Next(-20, 55),
+            Summary = summaries[Random.Shared.Next(summaries.Length)]
         })
-    );
+        .ToArray())
+    .WithName("GetWeatherForecast");
+
+app.MapGet("/", () => Results.Redirect("/scalar"))
+    .ExcludeFromDescription();
+
+app.Run();
+
+
+void ConfigureOtelExporter(OtlpExporterOptions config)
+{
+    config.Endpoint = new Uri(otelConfig["Endpoint"]!);
+    config.Protocol = OtlpExportProtocol.Grpc;
+}
+
+record WeatherForecast
+{
+    public DateOnly Date { get; init; }
+
+    public int TemperatureC { get; init; }
+
+    public string? Summary { get; init; }
 }
