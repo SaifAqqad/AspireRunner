@@ -71,7 +71,7 @@ public partial class Dashboard
         }
     }
 
-    private string FormatUrl(string value)
+    private static string FormatUrl(string value)
     {
         const string? defaultIpv4 = "127.0.0.1";
         const string? defaultIpv6 = "[::1]";
