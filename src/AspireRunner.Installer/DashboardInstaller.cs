@@ -38,6 +38,7 @@ public class DashboardInstaller : IDashboardInstaller
     public async Task<(bool Success, Version Latest, Version? Installed)> EnsureLatestAsync(CancellationToken cancellationToken = default)
     {
         var latestRuntimeVersion = (await Dashboard.GetCompatibleRuntimesAsync()).Max();
+        _logger.LogTrace("Found AspNetCore Runtime version {Version}", latestRuntimeVersion);
 
         var availableVersions = await GetAvailableVersionsAsync(cancellationToken: cancellationToken);
         if (availableVersions.Length == 0)
@@ -45,18 +46,32 @@ public class DashboardInstaller : IDashboardInstaller
             throw new ApplicationException("No versions of the Aspire Dashboard are available");
         }
 
+        if (_logger.IsEnabled(LogLevel.Trace))
+        {
+            _logger.LogTrace("Fetched package {Package} versions from nuget: {Versions}", _nugetPackageName, string.Join(", ", [..availableVersions]));
+        }
+
         var latestCompatible = availableVersions
                 .Where(v => IsRuntimeCompatible(v, latestRuntimeVersion!))
                 .Max()
             ?? availableVersions.First(); // Fallback to the latest version
 
-        var latestInstalled = Dashboard.GetInstalledVersions().Max();
+        var installedVersions = Dashboard.GetInstalledVersions();
+        if (_logger.IsEnabled(LogLevel.Trace))
+        {
+            _logger.LogTrace("Found package {Package} installed versions {Versions}", _nugetPackageName, string.Join(", ", [..installedVersions]));
+        }
+
+        var latestInstalled = installedVersions.Max();
         if (latestInstalled == latestCompatible)
         {
+            _logger.LogInformation("Latest dashboard version {Version} is already installed", latestCompatible);
+
             // Dashboard is up to date
             return (true, latestCompatible, latestInstalled);
         }
 
+        _logger.LogInformation("Attempting to install dashboard version {Version}", latestCompatible);
         var success = await InstallAsync(latestCompatible, cancellationToken);
         return (success, latestCompatible, latestInstalled);
     }
@@ -66,10 +81,8 @@ public class DashboardInstaller : IDashboardInstaller
         try
         {
             using var packageStream = new MemoryStream();
-            var resource = await _nugetRepository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
-
             var destinationPath = Path.Combine(_runnerPath, version.ToString());
-            _logger.LogTrace("Downloading {PackageName} {Version} to {DestinationPath}", _nugetPackageName, version, destinationPath);
+            var resource = await _nugetRepository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
 
             var success = await resource.CopyNupkgToStreamAsync(
                 id: _nugetPackageName,
@@ -87,6 +100,7 @@ public class DashboardInstaller : IDashboardInstaller
 
             using var packageReader = new PackageArchiveReader(packageStream);
             await packageReader.CopyFilesAsync(destinationPath, packageReader.GetFiles(), ExtractFile, NullLogger.Instance, cancellationToken);
+            _logger.LogInformation("Installed {PackageName} version {Version} to {Path}", _nugetPackageName, version, destinationPath);
 
             return true;
         }
@@ -113,7 +127,7 @@ public class DashboardInstaller : IDashboardInstaller
             }
 
             await Task.Factory.StartNew(p => Directory.Delete((string)p!, recursive: true), installDirectory, cancellationToken);
-            _logger.LogTrace("Removed {PackageName} {Version} from {Path}", _nugetPackageName, version, _runnerPath);
+            _logger.LogInformation("Removed {PackageName} version {Version} from {Path}", _nugetPackageName, version, _runnerPath);
 
             return true;
         }

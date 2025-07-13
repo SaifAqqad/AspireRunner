@@ -10,7 +10,7 @@ public static class ServiceCollectionExtensions
             .Configure(options => configureOptions?.Invoke(options));
 
         services.AddSingleton<IDashboardFactory, DashboardFactory>();
-        services.AddHostedService<AspireDashboardService>();
+        services.AddHostedService<AspireRunnerService>();
 
         return services;
     }
