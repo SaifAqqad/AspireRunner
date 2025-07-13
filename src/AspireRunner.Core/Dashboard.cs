@@ -58,7 +58,7 @@ public partial class Dashboard : IDashboard
         {
             if (retryCount > 0)
             {
-                _logger.LogWarning("Failed to start the Aspire Dashboard, retrying in {RetryDelay} seconds...", Options.Runner.RunRetryDelay);
+                WarnFailedToStartDashboardWithRetry(Options.Runner.RunRetryDelay);
                 await Task.Delay(retryDelay, cancellationToken);
             }
 
@@ -79,12 +79,11 @@ public partial class Dashboard : IDashboard
         try
         {
             _stopRequested = true;
-            _logger.LogInformation("Stopping the Aspire Dashboard...");
             await Task.Run(() => _dashboardProcess?.Kill(true), cancellationToken);
         }
         catch (InvalidOperationException)
         {
-            _logger.LogWarning("The Aspire Dashboard has already been stopped");
+            WarnDashboardAlreadyStopped();
         }
 
         _dashboardProcess = null;
@@ -115,7 +114,7 @@ public partial class Dashboard : IDashboard
                 }
                 else if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.WarnAndExit)
                 {
-                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", instance.Dashboard.Id);
+                    WarnExistingInstance(instance.Dashboard.Id);
                     return false;
                 }
             }
@@ -123,7 +122,7 @@ public partial class Dashboard : IDashboard
             _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
             if (_dashboardProcess is null)
             {
-                _logger.LogError("Failed to start the Aspire Dashboard");
+                LogFailedToStartDashboardProcess();
                 return false;
             }
 
@@ -135,9 +134,9 @@ public partial class Dashboard : IDashboard
             PersistInstance();
             return true;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
+            LogFailedToStartDashboard(ex);
             return false;
         }
     }
@@ -158,7 +157,7 @@ public partial class Dashboard : IDashboard
                 return;
             }
 
-            _logger.LogWarning("Aspire dashboard exited unexpectedly, Attempting to restart...");
+            WarnDashboardExitedUnexpectedly();
             await StartAsync();
         };
     }
@@ -214,7 +213,7 @@ public partial class Dashboard : IDashboard
         }
 
         // Log the previous error before collecting the new one
-        _logger.LogError("{AspireError}", _lastError.ToString());
+        LogDashboardError(_lastError.ToString());
 
         _lastError.Clear();
         _lastError.AppendLine(error);
@@ -231,7 +230,7 @@ public partial class Dashboard : IDashboard
                 return;
             }
 
-            _logger.LogError("{AspireError}", _lastError.ToString());
+            LogDashboardError(_lastError.ToString());
             _lastError.Clear();
         });
     }
@@ -243,7 +242,7 @@ public partial class Dashboard : IDashboard
             var urlOpener = PlatformHelper.GetUrlOpener(url);
             if (urlOpener is null)
             {
-                _logger.LogWarning("Failed to find a suitable URL opener");
+                WarnFailedToFindUrlOpener();
                 return Task.CompletedTask;
             }
 
@@ -252,7 +251,7 @@ public partial class Dashboard : IDashboard
         }
         catch
         {
-            _logger.LogWarning("Failed to launch the browser");
+            WarnFailedToLaunchBrowser();
         }
 
         return Task.CompletedTask;

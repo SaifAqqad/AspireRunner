@@ -30,7 +30,7 @@ public partial class AspireRunnerService
 
     [LoggerMessage(
         Level = LogLevel.Information,
-        Message = "Found Aspire Dashboard version {Version}"
+        Message = "Found Aspire Dashboard v{Version}"
     )]
     public partial void LogVersionFound(Version version);
 
@@ -42,7 +42,7 @@ public partial class AspireRunnerService
 
     [LoggerMessage(
         Level = LogLevel.Information,
-        Message = "Successfully installed dashboard version {Version}"
+        Message = "Successfully installed dashboard v{Version}"
     )]
     public partial void LogSuccessfulInstallation(Version version);
 

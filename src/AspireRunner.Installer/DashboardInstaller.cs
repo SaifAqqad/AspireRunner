@@ -8,7 +8,7 @@ using NullLogger = NuGet.Common.NullLogger;
 
 namespace AspireRunner.Installer;
 
-public class DashboardInstaller : IDashboardInstaller
+public partial class DashboardInstaller : IDashboardInstaller
 {
     private const string SdkName = "Aspire.Dashboard.Sdk";
     private const string DefaultRepoUrl = "https://api.nuget.org/v3/index.json";
@@ -38,17 +38,14 @@ public class DashboardInstaller : IDashboardInstaller
     public async Task<(bool Success, Version Latest, Version? Installed)> EnsureLatestAsync(CancellationToken cancellationToken = default)
     {
         var latestRuntimeVersion = (await Dashboard.GetCompatibleRuntimesAsync()).Max();
-        _logger.LogTrace("Found AspNetCore Runtime version {Version}", latestRuntimeVersion);
+        TraceFoundRuntimeVersion(latestRuntimeVersion);
 
         var availableVersions = await GetAvailableVersionsAsync(cancellationToken: cancellationToken);
+        TraceFetchedPackageVersions(_nugetPackageName, availableVersions);
+
         if (availableVersions.Length == 0)
         {
             throw new ApplicationException("No versions of the Aspire Dashboard are available");
-        }
-
-        if (_logger.IsEnabled(LogLevel.Trace))
-        {
-            _logger.LogTrace("Fetched package {Package} versions from nuget: {Versions}", _nugetPackageName, string.Join(", ", [..availableVersions]));
         }
 
         var latestCompatible = availableVersions
@@ -57,21 +54,16 @@ public class DashboardInstaller : IDashboardInstaller
             ?? availableVersions.First(); // Fallback to the latest version
 
         var installedVersions = Dashboard.GetInstalledVersions();
-        if (_logger.IsEnabled(LogLevel.Trace))
-        {
-            _logger.LogTrace("Found package {Package} installed versions {Versions}", _nugetPackageName, string.Join(", ", [..installedVersions]));
-        }
+        TraceFoundInstalledVersions(_nugetPackageName, installedVersions);
 
         var latestInstalled = installedVersions.Max();
         if (latestInstalled == latestCompatible)
         {
-            _logger.LogInformation("Latest dashboard version {Version} is already installed", latestCompatible);
-
             // Dashboard is up to date
+            LogLatestVersionIsAlreadyInstalled(latestCompatible);
             return (true, latestCompatible, latestInstalled);
         }
 
-        _logger.LogInformation("Attempting to install dashboard version {Version}", latestCompatible);
         var success = await InstallAsync(latestCompatible, cancellationToken);
         return (success, latestCompatible, latestInstalled);
     }
@@ -100,13 +92,13 @@ public class DashboardInstaller : IDashboardInstaller
 
             using var packageReader = new PackageArchiveReader(packageStream);
             await packageReader.CopyFilesAsync(destinationPath, packageReader.GetFiles(), ExtractFile, NullLogger.Instance, cancellationToken);
-            _logger.LogInformation("Installed {PackageName} version {Version} to {Path}", _nugetPackageName, version, destinationPath);
+            LogInstalledPackageVersionToPath(_nugetPackageName, version, destinationPath);
 
             return true;
         }
         catch (Exception e)
         {
-            _logger.LogError("Failed to download {PackageName} {Version} to {Path}, {Exception}", _nugetPackageName, version, _downloadPath, e.Message);
+            LogFailedToDownloadPackage(_nugetPackageName, version, _downloadPath, e.Message);
             return false;
         }
     }
@@ -127,13 +119,13 @@ public class DashboardInstaller : IDashboardInstaller
             }
 
             await Task.Factory.StartNew(p => Directory.Delete((string)p!, recursive: true), installDirectory, cancellationToken);
-            _logger.LogInformation("Removed {PackageName} version {Version} from {Path}", _nugetPackageName, version, _downloadPath);
+            LogRemovedPackageVersion(_nugetPackageName, version, _downloadPath);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to remove {PackageName} {Version} from {Path}", _nugetPackageName, version, _downloadPath);
+            LogFailedToRemovePackage(ex, _nugetPackageName, version, _downloadPath);
             return false;
         }
     }
@@ -161,7 +153,7 @@ public class DashboardInstaller : IDashboardInstaller
     {
         try
         {
-            _logger.LogTrace("Extracting {SourceFile} to {TargetPath}", sourceFile, targetPath);
+            TraceExtractingFileToPath(sourceFile, targetPath);
 
             // Ensure the directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
@@ -173,7 +165,7 @@ public class DashboardInstaller : IDashboardInstaller
         }
         catch (Exception ex)
         {
-            _logger.LogError("Failed to extract {SourceFile} to {TargetPath}, {Exception}", sourceFile, targetPath, ex.Message);
+            LogFailedToExtractFile(ex, sourceFile, targetPath);
             throw;
         }
     }

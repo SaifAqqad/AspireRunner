@@ -8,21 +8,21 @@ public partial class DashboardFactory
         Level = LogLevel.Trace,
         Message = "Found compatible runtimes: {CompatibleRuntimes}"
     )]
-    public partial void LogCompatibleRuntimes(string compatibleRuntimes);
+    private partial void LogCompatibleRuntimes(string compatibleRuntimes);
 
     [LoggerMessage(
         Level = LogLevel.Trace,
         Message = "Aspire Dashboard installation path: '{Path}'"
     )]
-    public partial void LogInstallationPath(string path);
+    private partial void LogInstallationPath(string path);
 
     [LoggerMessage(
         Level = LogLevel.Warning,
         Message = "Preferred Dashboard Version {PreferredVersion} not found, falling back to latest version installed"
     )]
-    public partial void WarnPreferredVersionNotFound(string? preferredVersion);
+    private partial void WarnPreferredVersionNotFound(string? preferredVersion);
 
-    public void LogCompatibleRuntimes(Version[] compatibleRuntimes)
+    private void LogCompatibleRuntimes(Version[] compatibleRuntimes)
     {
         if (!_logger.IsEnabled(LogLevel.Trace))
         {
