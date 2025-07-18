@@ -1,18 +1,16 @@
 ﻿namespace AspireRunner.Core;
 
-public partial class AspireDashboard
+public partial class Dashboard
 {
-    internal const string SdkName = "Aspire.Dashboard.Sdk";
+    public const string DownloadFolder = "dashboard";
 
-    internal const string DllName = "Aspire.Dashboard.dll";
+    public const string RunnerFolder = ".AspireRunner";
 
-    internal const string AspRuntimeName = "Microsoft.AspNetCore.App";
+    public const string DllName = "Aspire.Dashboard.dll";
 
-    internal const string DataFolder = ".AspireRunner";
+    public const string RequiredRuntimeName = "Microsoft.AspNetCore.App";
 
-    internal const string DownloadFolder = "dashboard";
-
-    internal static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
+    public static readonly Version MinimumRuntimeVersion = new(8, 0, 0);
 
     private const int DefaultErrorLogDelay = 2000;
 

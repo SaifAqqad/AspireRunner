@@ -6,7 +6,7 @@ namespace AspireRunner.Core;
 /// Configuration options used by the Aspire Dashboard.
 /// <see href="https://github.com/dotnet/aspire/tree/v9.0.0/src/Aspire.Dashboard/Configuration">Aspire.Dashboard/Configuration</see>
 /// </summary>
-public sealed record AspireDashboardOptions
+public sealed record DashboardOptions
 {
     /// <summary>
     /// The application name to be displayed in the dashboard UI.
@@ -136,6 +136,7 @@ public sealed record RunnerOptions
     /// <summary>
     /// Specifies the preferred version of the dashboard to run/download.
     /// </summary>
+    /// <remarks>Can be a specifc version (e.g. <c>9.2.0</c>), or a valid semver range specifier (e.g. <c>9.x.x</c> or <c>>=9.1.0</c></remarks>
     public string? PreferredVersion { get; set; }
 
     /// <summary>

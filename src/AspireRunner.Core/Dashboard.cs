@@ -7,7 +7,7 @@ using System.Text;
 
 namespace AspireRunner.Core;
 
-public partial class AspireDashboard
+public partial class Dashboard : IDashboard
 {
     private StringBuilder? _lastError;
     private DateTimeOffset? _lastErrorTime;
@@ -15,45 +15,33 @@ public partial class AspireDashboard
     private bool _stopRequested;
 
     private readonly string _dllPath;
-    private readonly string _runnerFolder;
-    private readonly DotnetCli _dotnetCli;
-    private readonly ILogger<AspireDashboard> _logger;
+    private readonly string _runnerPath;
+    private readonly ILogger<Dashboard> _logger;
     private readonly FileDistributedLock _instanceLock;
     private readonly IDictionary<string, string?> _environmentVariables;
 
-    public Version Version { get; private set; }
+    public Version Version { get; }
 
-    public AspireDashboardOptions Options { get; }
+    public DashboardOptions Options { get; }
 
-    /// <summary>
-    /// Triggered when the Aspire Dashboard has started and the UI is ready.
-    /// <br/>
-    /// The dashboard URL (including the browser token) is passed to the event handler.
-    /// </summary>
     public event Action<string>? DashboardStarted;
 
-    /// <summary>
-    /// Triggered when the OTLP endpoint is ready to receive telemetry data.
-    /// <br/>
-    /// The OTLP endpoint URL and protocol are passed to the event handler.
-    /// </summary>
     public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
 
     public bool HasErrors { get; private set; }
 
     public bool IsRunning => _dashboardProcess.IsRunning();
 
-    internal AspireDashboard(DotnetCli dotnetCli, Version version, string dllPath, AspireDashboardOptions options, ILogger<AspireDashboard> logger)
+    internal Dashboard(Version version, string dllPath, DashboardOptions options, ILogger<Dashboard> logger)
     {
         Version = version;
         Options = options;
 
         _logger = logger;
         _dllPath = dllPath;
-        _dotnetCli = dotnetCli;
+        _runnerPath = GetRunnerPath();
         _environmentVariables = options.ToEnvironmentVariables();
-        _runnerFolder = Path.Combine(_dotnetCli.DataPath, DataFolder);
-        _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerFolder), InstanceLock);
+        _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerPath), InstanceLock);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -70,7 +58,7 @@ public partial class AspireDashboard
         {
             if (retryCount > 0)
             {
-                _logger.LogWarning("Failed to start the Aspire Dashboard, retrying in {RetryDelay} seconds...", Options.Runner.RunRetryDelay);
+                WarnFailedToStartDashboardWithRetry(Options.Runner.RunRetryDelay);
                 await Task.Delay(retryDelay, cancellationToken);
             }
 
@@ -79,6 +67,36 @@ public partial class AspireDashboard
                 return;
             }
         } while (retryCount++ < Options.Runner.RunRetryCount && !cancellationToken.IsCancellationRequested);
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsRunning || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            _stopRequested = true;
+            await Task.Run(() => _dashboardProcess?.Kill(true), cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            WarnDashboardAlreadyStopped();
+        }
+
+        _dashboardProcess = null;
+    }
+
+    public Task WaitForExitAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsRunning || cancellationToken.IsCancellationRequested)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _dashboardProcess!.WaitForExitAsync(cancellationToken);
     }
 
     private async Task<bool> TryStartProcessAsync(CancellationToken cancellationToken = default)
@@ -96,15 +114,15 @@ public partial class AspireDashboard
                 }
                 else if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.WarnAndExit)
                 {
-                    _logger.LogWarning("Another instance of the Aspire Dashboard is already running, Process Id = {PID}", instance.Dashboard.Id);
+                    WarnExistingInstance(instance.Dashboard.Id);
                     return false;
                 }
             }
 
-            _dashboardProcess = ProcessHelper.Run(_dotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
+            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
             if (_dashboardProcess is null)
             {
-                _logger.LogError("Failed to start the Aspire Dashboard");
+                LogFailedToStartDashboardProcess();
                 return false;
             }
 
@@ -116,49 +134,11 @@ public partial class AspireDashboard
             PersistInstance();
             return true;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            _logger.LogError("Failed to start the Aspire Dashboard: {Message}", e.Message);
+            LogFailedToStartDashboard(ex);
             return false;
         }
-    }
-
-    /// <summary>
-    /// Stops the Aspire Dashboard process.
-    /// </summary>
-    public void Stop()
-    {
-        if (!IsRunning)
-        {
-            return;
-        }
-
-        try
-        {
-            _stopRequested = true;
-            _logger.LogInformation("Stopping the Aspire Dashboard...");
-            _dashboardProcess?.Kill(true);
-        }
-        catch (InvalidOperationException)
-        {
-            _logger.LogWarning("The Aspire Dashboard has already been stopped");
-        }
-
-        _dashboardProcess = null;
-    }
-
-    /// <summary>
-    /// Returns a task that completes when the Aspire Dashboard process exits or when the cancellation token is triggered.
-    /// </summary>
-    /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
-    public Task WaitForExitAsync(CancellationToken cancellationToken = default)
-    {
-        if (!IsRunning || cancellationToken.IsCancellationRequested)
-        {
-            return Task.CompletedTask;
-        }
-
-        return _dashboardProcess!.WaitForExitAsync(cancellationToken);
     }
 
     private void RegisterProcessExitHandler(string? _ = null)
@@ -177,7 +157,7 @@ public partial class AspireDashboard
                 return;
             }
 
-            _logger.LogWarning("Aspire dashboard exited unexpectedly, Attempting to restart...");
+            WarnDashboardExitedUnexpectedly();
             await StartAsync();
         };
     }
@@ -195,9 +175,9 @@ public partial class AspireDashboard
             return;
         }
 
-        if (DashboardLaunchUrlRegex.Match(output) is { Success: true } match)
+        if (DashboardLaunchUrlRegex().Match(output) is { Success: true } match)
         {
-            var url = match.Groups["url"].Value;
+            var url = FormatUrl(match.Groups["url"].Value);
             if (Options.Runner.LaunchBrowser)
             {
                 _ = LaunchBrowserAsync(url);
@@ -206,9 +186,9 @@ public partial class AspireDashboard
             DashboardStarted?.Invoke(url);
         }
 
-        if (OtlpEndpointRegex.Match(output) is { Success: true } otlpMatch)
+        if (OtlpEndpointRegex().Match(output) is { Success: true } otlpMatch)
         {
-            var url = otlpMatch.Groups["url"].Value;
+            var url = FormatUrl(otlpMatch.Groups["url"].Value);
             var protocol = otlpMatch.Groups["protocol"].Value;
 
             OtlpEndpointReady?.Invoke((url, protocol));
@@ -233,7 +213,7 @@ public partial class AspireDashboard
         }
 
         // Log the previous error before collecting the new one
-        _logger.LogError("{AspireError}", _lastError.ToString());
+        LogDashboardError(_lastError.ToString());
 
         _lastError.Clear();
         _lastError.AppendLine(error);
@@ -250,7 +230,7 @@ public partial class AspireDashboard
                 return;
             }
 
-            _logger.LogError("{AspireError}", _lastError.ToString());
+            LogDashboardError(_lastError.ToString());
             _lastError.Clear();
         });
     }
@@ -262,7 +242,7 @@ public partial class AspireDashboard
             var urlOpener = PlatformHelper.GetUrlOpener(url);
             if (urlOpener is null)
             {
-                _logger.LogWarning("Failed to find a suitable URL opener");
+                WarnFailedToFindUrlOpener();
                 return Task.CompletedTask;
             }
 
@@ -271,7 +251,7 @@ public partial class AspireDashboard
         }
         catch
         {
-            _logger.LogWarning("Failed to launch the browser");
+            WarnFailedToLaunchBrowser();
         }
 
         return Task.CompletedTask;
@@ -284,13 +264,13 @@ public partial class AspireDashboard
             return;
         }
 
-        var instanceFilePath = Path.Combine(_runnerFolder, InstanceFile);
+        var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
         File.WriteAllText(instanceFilePath, $"{_dashboardProcess!.Id}:{Environment.ProcessId}");
     }
 
     private (Process? Dashboard, Process? Runner) TryGetRunningInstance()
     {
-        var instanceFilePath = Path.Combine(_runnerFolder, InstanceFile);
+        var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
         if (!File.Exists(instanceFilePath))
         {
             return default;

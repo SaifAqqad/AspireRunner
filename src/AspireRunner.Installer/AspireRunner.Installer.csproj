@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Version>2.0.0</Version>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <RuntimeIdentifiers>win;osx;linux</RuntimeIdentifiers>
+    <langversion>latest</langversion>
+
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AspireRunner.Installer</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IncludeSymbols>true</IncludeSymbols>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <PackageOutputPath>../../dist</PackageOutputPath>
+
+    <Authors>SaifAqqad</Authors>
+    <Description>A runner for the dotnet Aspire Dashboard</Description>
+    <PackageProjectUrl>https://github.com/SaifAqqad/AspireRunner</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SaifAqqad/AspireRunner.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>aspire aspire-dashboard opentelemetry otel</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="./"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.7" />
+    <PackageReference Include="NuGet.Protocol" Version="6.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AspireRunner.Core\AspireRunner.Core.csproj"/>
+  </ItemGroup>
+
+</Project>
