@@ -1,5 +1,4 @@
-﻿using AspireRunner.Core.Helpers;
-using AspireRunner.Core.Models;
+﻿using AspireRunner.Core.Models;
 
 namespace AspireRunner.Core;
 
@@ -69,16 +68,5 @@ public partial class Dashboard
                 return null;
             }
         }
-    }
-
-    private static string FormatUrl(string value)
-    {
-        const string? defaultIpv4 = "127.0.0.1";
-        const string? defaultIpv6 = "[::1]";
-
-        return value.Replace("*", defaultIpv4)
-            .Replace("+", defaultIpv4)
-            .Replace("0.0.0.0", defaultIpv4)
-            .Replace("[::]", defaultIpv6);
     }
 }
