@@ -1,12 +1,13 @@
-﻿using AspireRunner.Tool.Commands;
+﻿using AspireRunner.Tool;
+using AspireRunner.Tool.Commands;
 using System.Reflection;
 
 var app = new CommandApp();
 
 app.Configure(config =>
 {
-    config.SetApplicationName("Aspire Runner");
-    config.SetApplicationVersion(Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "N/A");
+    config.SetApplicationName(Runner.CommandName);
+    config.SetApplicationVersion(Runner.Version.ToString());
 
     // Register commands
     config.AddCommand<RunCommand>("run");
@@ -19,5 +20,5 @@ app.Configure(config =>
 #endif
 });
 
-app.SetDefaultCommand<RunCommand>();
+app.SetDefaultCommand<RunCommand>().WithDescription($"Aspire Runner v{Runner.Version}");
 return await app.RunAsync(args);

@@ -36,7 +36,7 @@ public static class OptionsExtensions
 
         if (options.Otlp.EndpointUrl is null && options.Otlp.HttpEndpointUrl is null)
         {
-            envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = BuildLocalUrl(OtlpOptions.DefaultOtlpGrpcPort);
+            envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = UrlHelper.BuildLocalUrl(OtlpOptions.DefaultOtlpGrpcPort);
         }
 
         if (envVars.TryGetValue("DASHBOARD__FRONTEND__ENDPOINTURLS", out var frontendUrls))
@@ -45,16 +45,5 @@ public static class OptionsExtensions
         }
 
         return envVars;
-    }
-
-    public static string BuildLocalUrl(int port, bool secure = false, string? hostname = null)
-    {
-        var protocol = secure ? "https" : "http";
-        if (string.IsNullOrWhiteSpace(hostname))
-        {
-            hostname = "localhost";
-        }
-
-        return $"{protocol}://{hostname}:{port}";
     }
 }

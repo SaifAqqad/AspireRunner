@@ -1,5 +1,4 @@
 ﻿using AspireRunner.Core.Extensions;
-using AspireRunner.Core.Helpers;
 using Medallion.Threading.FileSystem;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -14,7 +13,6 @@ public partial class Dashboard : IDashboard
     private Process? _dashboardProcess;
     private bool _stopRequested;
 
-    private readonly string _dllPath;
     private readonly string _runnerPath;
     private readonly ILogger<Dashboard> _logger;
     private readonly FileDistributedLock _instanceLock;
@@ -23,6 +21,12 @@ public partial class Dashboard : IDashboard
     public Version Version { get; }
 
     public DashboardOptions Options { get; }
+
+    public string InstallationPath { get; }
+
+    public string? Url { get; private set; }
+
+    public IReadOnlyList<(string Url, string Protocol)>? OtlpEndpoints { get; private set; }
 
     public event Action<string>? DashboardStarted;
 
@@ -36,9 +40,9 @@ public partial class Dashboard : IDashboard
     {
         Version = version;
         Options = options;
+        InstallationPath = dllPath;
 
         _logger = logger;
-        _dllPath = dllPath;
         _runnerPath = GetRunnerPath();
         _environmentVariables = options.ToEnvironmentVariables();
         _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerPath), InstanceLock);
@@ -119,7 +123,7 @@ public partial class Dashboard : IDashboard
                 }
             }
 
-            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
+            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(InstallationPath, DllName)], _environmentVariables, InstallationPath, OutputHandler, ErrorHandler);
             if (_dashboardProcess is null)
             {
                 LogFailedToStartDashboardProcess();
@@ -177,21 +181,22 @@ public partial class Dashboard : IDashboard
 
         if (DashboardLaunchUrlRegex().Match(output) is { Success: true } match)
         {
-            var url = FormatUrl(match.Groups["url"].Value);
+            Url = UrlHelper.ReplaceDefaultRoute(match.Groups["url"].Value);
             if (Options.Runner.LaunchBrowser)
             {
-                _ = LaunchBrowserAsync(url);
+                _ = LaunchBrowserAsync(Url);
             }
 
-            DashboardStarted?.Invoke(url);
+            DashboardStarted?.Invoke(Url);
         }
 
         if (OtlpEndpointRegex().Match(output) is { Success: true } otlpMatch)
         {
-            var url = FormatUrl(otlpMatch.Groups["url"].Value);
-            var protocol = otlpMatch.Groups["protocol"].Value;
+            var endpoint = (UrlHelper.ReplaceDefaultRoute(otlpMatch.Groups["url"].Value), otlpMatch.Groups["protocol"].Value);
+            var endpoints = (List<(string Url, string Protocol)>)(OtlpEndpoints ??= new List<(string Url, string Protocol)>());
+            endpoints.Add(endpoint);
 
-            OtlpEndpointReady?.Invoke((url, protocol));
+            OtlpEndpointReady?.Invoke(endpoint);
         }
     }
 

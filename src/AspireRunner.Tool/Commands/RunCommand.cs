@@ -1,5 +1,7 @@
 ﻿using AspireRunner.Tool.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 
 namespace AspireRunner.Tool.Commands;
 
@@ -80,37 +82,150 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        // nothing works rn
-        var logger = new InMemoryLogger<Program>();
+        var header = new Markup($"[fuchsia bold][link={Runner.ProjectUrl}]Aspire Runner[/][/] [fuchsia]v{Runner.Version}[/]");
+        Console.Write(header);
+        Console.WriteLine();
 
-        var dashboardOptions = BuildOptions(arguments);
+        Dashboard? dashboard = null;
+        var dashboardOptions = BuildOptions(settings);
 
-        var aspireDashboardManager = new DashboardFactory(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
-        var aspireDashboard = await GetDashboardAsync(aspireDashboardManager, dashboardOptions, arguments);
+        // runner signal handlers
+        void StopHandler(PosixSignalContext _) => dashboard?.StopAsync().Wait();
+        using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, StopHandler);
+        using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, StopHandler);
 
-        aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
-        aspireDashboard.OtlpEndpointReady += endpoint => logger.LogInformation(Green("The OTLP/{Protocol} endpoint is ready at {Url}"), endpoint.Protocol, endpoint.Url);
-
-        var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
-        using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
-        using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
-
-        try
-        {
-            await aspireDashboard.StartAsync();
-            await aspireDashboard.WaitForExitAsync();
-
-            logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
-            return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
-        }
-        catch (Exception e)
-        {
-            throw new ConsoleRunnerException
+        await Console.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(new Style(Color.Fuchsia))
+            .StartAsync("Initializing runner", async ctx =>
             {
-                FormattedMessage = $"An error occurred while starting the Aspire Dashboard: {e.Message}",
-                ReturnCode = ReturnCodes.AspireDashboardError
-            };
+                var dashboardFactory = new DashboardFactory(new NullLogger<DashboardFactory>(), new InMemoryLoggerFactory());
+
+                ctx.Status("Looking for installed dashboards");
+                dashboard = await dashboardFactory.CreateDashboardAsync(dashboardOptions);
+
+                if (dashboard is null)
+                {
+                    Console.MarkupLineInterpolated($"[red]Couldn't find any dashboards installed, run '{Runner.CommandName} install' to install the latest version[/]");
+                    return;
+                }
+
+                if (settings.Version is not null && !VersionRange.Parse(settings.Version, true).IsSatisfied(dashboard.Version))
+                {
+                    Console.MarkupLineInterpolated($"[red]No version matching '{settings.Version}' is installed, run '{Runner.CommandName} install {settings.Version}' to install it[/]");
+                    dashboard = null;
+                    return;
+                }
+
+                Console.MarkupLineInterpolated($"Found dashboard version {dashboard.Version} at {dashboard.InstallationPath}");
+
+                // TODO: Handle exceptions
+                ctx.Status("Starting dashboard process");
+                await dashboard.StartAsync(CancellationToken.None);
+
+                Console.MarkupLine("Dashboard started successfully");
+            });
+
+        if (dashboard is null)
+        {
+            return -1;
         }
-        throw new NotImplementedException();
+
+        // TODO: this layout will be used after initialization
+        var layout = new Layout("root")
+            .SplitRows(
+                new Layout("header").Update(header).Ratio(1),
+                new Layout("main").Ratio(19)
+            );
+
+        // TODO: will include a table of all avaialble endpoitns with links + view log button, etc
+        layout["main"].Update(new Text(""));
+
+        Console.Write(layout);
+
+        // TODO: will not be needed since we'll be using a button selection prompt
+        await Console.Console.Input.ReadKeyAsync(true, CancellationToken.None);
+        await dashboard.StopAsync();
+
+        return 0;
+
+        // var logger = new InMemoryLogger<Program>();
+        //
+        // var dashboardOptions = BuildOptions(arguments);
+        //
+        // var aspireDashboardManager = new DashboardFactory(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
+        // var aspireDashboard = await GetDashboardAsync(aspireDashboardManager, dashboardOptions, arguments);
+        //
+        // aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
+        // aspireDashboard.OtlpEndpointReady += endpoint => logger.LogInformation(Green("The OTLP/{Protocol} endpoint is ready at {Url}"), endpoint.Protocol, endpoint.Url);
+        //
+        // var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
+        // using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
+        // using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
+
+        // try
+        // {
+        //     await aspireDashboard.StartAsync();
+        //     await aspireDashboard.WaitForExitAsync();
+        //
+        //     logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
+        //     return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
+        // }
+        // catch (Exception e)
+        // {
+        //     throw new ConsoleRunnerException
+        //     {
+        //         FormattedMessage = $"An error occurred while starting the Aspire Dashboard: {e.Message}",
+        //         ReturnCode = ReturnCodes.AspireDashboardError
+        //     };
+        // }
+    }
+
+    static DashboardOptions BuildOptions(Settings args)
+    {
+        var useHttps = args.OtlpHttps ?? args.UseHttps ?? true;
+        var corsConfigured = !string.IsNullOrWhiteSpace(args.CorsAllowedOrigins) || !string.IsNullOrWhiteSpace(args.CorsAllowedHeaders);
+        var browserTelemetryEnabled = args.OtlpHttpPort is > 0 and <= 65535 || corsConfigured;
+
+        var aspireDashboardOptions = new DashboardOptions
+        {
+            Frontend = new FrontendOptions
+            {
+                BrowserToken = args.AuthToken,
+                AuthMode = args.UseAuth || !string.IsNullOrWhiteSpace(args.AuthToken) ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
+                EndpointUrls = UrlHelper.BuildLocalUrl(args.DashboardPort, args.DashboardHttps ?? args.UseHttps ?? true, args.Hostname)
+            },
+            Otlp = new OtlpOptions
+            {
+                PrimaryApiKey = args.OtlpKey,
+                Cors = browserTelemetryEnabled ? new OtlpCorsOptions() : null,
+                AuthMode = string.IsNullOrWhiteSpace(args.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey
+            },
+            Runner = new RunnerOptions
+            {
+                PreferredVersion = args.Version,
+                LaunchBrowser = args.LaunchBrowser,
+                AutoUpdate = args.AutoUpdate ?? true,
+                SingleInstanceHandling = args.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
+            }
+        };
+
+        if (args.OtlpPort is > 0 and <= 65535)
+        {
+            aspireDashboardOptions.Otlp.EndpointUrl = UrlHelper.BuildLocalUrl(args.OtlpPort, useHttps, args.Hostname);
+        }
+
+        if (browserTelemetryEnabled)
+        {
+            aspireDashboardOptions.Otlp.HttpEndpointUrl = UrlHelper.BuildLocalUrl(args.OtlpHttpPort ?? OtlpOptions.DefaultOtlpHttpPort, useHttps, args.Hostname);
+        }
+
+        if (aspireDashboardOptions.Otlp.Cors is not null)
+        {
+            aspireDashboardOptions.Otlp.Cors.AllowedHeaders = args.CorsAllowedHeaders;
+            aspireDashboardOptions.Otlp.Cors.AllowedOrigins = args.CorsAllowedOrigins ?? "*";
+        }
+
+        return aspireDashboardOptions;
     }
 }
