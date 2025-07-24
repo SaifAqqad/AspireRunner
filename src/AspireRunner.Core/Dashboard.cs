@@ -28,13 +28,15 @@ public partial class Dashboard : IDashboard
 
     public IReadOnlyList<(string Url, string Protocol)>? OtlpEndpoints { get; private set; }
 
-    public event Action<string>? DashboardStarted;
-
-    public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
-
     public bool HasErrors { get; private set; }
 
     public bool IsRunning => _dashboardProcess.IsRunning();
+
+    public int? Pid => _dashboardProcess?.Id;
+
+    public event Action<string>? DashboardStarted;
+
+    public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
 
     internal Dashboard(Version version, string dllPath, DashboardOptions options, ILogger<Dashboard> logger)
     {
@@ -122,6 +124,13 @@ public partial class Dashboard : IDashboard
                     return false;
                 }
             }
+
+            // Reset instance state
+            Url = null;
+            HasErrors = false;
+            OtlpEndpoints = null;
+            _lastError = null;
+            _lastErrorTime = null;
 
             _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(InstallationPath, DllName)], _environmentVariables, InstallationPath, OutputHandler, ErrorHandler);
             if (_dashboardProcess is null)

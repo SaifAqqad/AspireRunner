@@ -1,6 +1,5 @@
 ﻿using AspireRunner.Tool;
 using AspireRunner.Tool.Commands;
-using System.Reflection;
 
 var app = new CommandApp();
 
@@ -8,6 +7,17 @@ app.Configure(config =>
 {
     config.SetApplicationName(Runner.CommandName);
     config.SetApplicationVersion(Runner.Version.ToString());
+    config.SetExceptionHandler((ex, _) =>
+    {
+        if (ex is ApplicationException)
+        {
+            AnsiConsole.MarkupLineInterpolated($"[red bold][[Error]][/] {ex.Message}");
+            return -2;
+        }
+
+        AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+        return -1;
+    });
 
     // Register commands
     config.AddCommand<RunCommand>("run");

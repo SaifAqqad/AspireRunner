@@ -1,5 +1,6 @@
-﻿using AspireRunner.Tool.Logging;
+﻿using AspireRunner.Tool.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Spectre.Console.Rendering;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
@@ -80,108 +81,197 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         public bool Verbose { get; set; }
     }
 
+    private readonly Renderable _smallHeader = Markup.FromInterpolated($"[fuchsia][link={Runner.ProjectUrl}]Aspire Runner[/][/]");
+    private readonly Renderable _largeHeader = new FigletText("Aspire Runner").LeftJustified().Color(Color.Fuchsia);
+
+    private Renderable Header => AnsiConsole.Profile.Height < 15 || AnsiConsole.Profile.Width < 90 ? _smallHeader : _largeHeader;
+
+    private Renderable GetStatusSymbol(bool status)
+    {
+        var style = status ?
+            new Style(Color.Green, decoration: Decoration.Bold) :
+            new Style(Color.Red, decoration: Decoration.Bold);
+
+        return new Markup("○", style);
+    }
+
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        var header = new Markup($"[fuchsia bold][link={Runner.ProjectUrl}]Aspire Runner[/][/] [fuchsia]v{Runner.Version}[/]");
-        Console.Write(header);
-        Console.WriteLine();
+        AnsiConsole.Write(Header);
+        AnsiConsole.Write(new Markup($"Version [fuchsia]{Runner.Version}[/]"));
+        AnsiConsole.Console.EmptyLines(2);
 
+        // Prepare dashboard options
         Dashboard? dashboard = null;
         var dashboardOptions = BuildOptions(settings);
+        var httpEndpointEnabled = dashboardOptions.Otlp.HttpEndpointUrl is not null;
+        var grpcEndpointEnabled = dashboardOptions.Otlp.EndpointUrl is not null || (dashboardOptions.Otlp.EndpointUrl is null && dashboardOptions.Otlp.HttpEndpointUrl is null);
+        var endpointCount = grpcEndpointEnabled.GetHashCode() | httpEndpointEnabled.GetHashCode();
 
-        // runner signal handlers
+        // Register runner signal handlers
         void StopHandler(PosixSignalContext _) => dashboard?.StopAsync().Wait();
         using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, StopHandler);
         using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, StopHandler);
 
-        await Console.Status()
+        // Start initializing the dashboard
+        await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(new Style(Color.Fuchsia))
             .StartAsync("Initializing runner", async ctx =>
             {
-                var dashboardFactory = new DashboardFactory(new NullLogger<DashboardFactory>(), new InMemoryLoggerFactory());
+                var dashboardFactory = new DashboardFactory(new NullLogger<DashboardFactory>(), new NullLoggerFactory());
 
                 ctx.Status("Looking for installed dashboards");
                 dashboard = await dashboardFactory.CreateDashboardAsync(dashboardOptions);
 
                 if (dashboard is null)
                 {
-                    Console.MarkupLineInterpolated($"[red]Couldn't find any dashboards installed, run '{Runner.CommandName} install' to install the latest version[/]");
+                    AnsiConsole.MarkupLineInterpolated($"[red]Couldn't find any dashboards installed, run '{Runner.CommandName} install' to install the latest version[/]");
                     return;
                 }
 
                 if (settings.Version is not null && !VersionRange.Parse(settings.Version, true).IsSatisfied(dashboard.Version))
                 {
-                    Console.MarkupLineInterpolated($"[red]No version matching '{settings.Version}' is installed, run '{Runner.CommandName} install {settings.Version}' to install it[/]");
+                    AnsiConsole.MarkupLineInterpolated($"[red]No version matching '{settings.Version}' is installed, run '{Runner.CommandName} install {settings.Version}' to install it[/]");
                     dashboard = null;
                     return;
                 }
 
-                Console.MarkupLineInterpolated($"Found dashboard version {dashboard.Version} at {dashboard.InstallationPath}");
+                AnsiConsole.MarkupLineInterpolated($"Found dashboard version [fuchsia]{dashboard.Version}[/] at {dashboard.InstallationPath}");
 
-                // TODO: Handle exceptions
-                ctx.Status("Starting dashboard process");
+                ctx.Status("Starting dashboard process...");
                 await dashboard.StartAsync(CancellationToken.None);
-
-                Console.MarkupLine("Dashboard started successfully");
             });
 
-        if (dashboard is null)
+        if (dashboard?.IsRunning is not true)
         {
+            AnsiConsole.MarkupLineInterpolated($"[red]Failed to start dashboard[/]");
             return -1;
         }
 
-        // TODO: this layout will be used after initialization
-        var layout = new Layout("root")
-            .SplitRows(
-                new Layout("header").Update(header).Ratio(1),
-                new Layout("main").Ratio(19)
-            );
+        AnsiConsole.MarkupLine("Dashboard started successfully [green]✓[/]");
+        AnsiConsole.Clear();
 
-        // TODO: will include a table of all avaialble endpoitns with links + view log button, etc
-        layout["main"].Update(new Text(""));
+        // Prepare the main layout
+        var defaultStatus = GetStatusSymbol(false);
+        var table = new Table()
+            .BorderStyle(new Style(Color.Fuchsia, decoration: Decoration.Dim))
+            .AddColumn("Dashboard", c => c.Centered())
+            .AddColumn("OTLP/gRPC", c => c.Centered())
+            .AddColumn("OTLP/HTTP", c => c.Centered())
+            .AddRow(defaultStatus, defaultStatus, defaultStatus);
 
-        Console.Write(layout);
+        var actionsPrompt = Markup.FromInterpolated($"Press [fuchsia bold]S[/] to stop the dashbord, [fuchsia bold]R[/] to restart it, or [fuchsia bold]Esc[/]/[fuchsia bold]Ctrl+C[/] to exit the runner");
+        var mainLayout = new Layout("main").SplitRows(
+            new Layout("header", new Align(new Rows(Header, table), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(10),
+            new Layout("prompt", new Align(actionsPrompt, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(3)
+        );
 
-        // TODO: will not be needed since we'll be using a button selection prompt
-        await Console.Console.Input.ReadKeyAsync(true, CancellationToken.None);
-        await dashboard.StopAsync();
+        // Render the main layout
+        await RenderLiveInitialization();
 
-        return 0;
+        var currentWidth = AnsiConsole.Profile.Width;
+        var currentHeight = AnsiConsole.Profile.Height;
 
-        // var logger = new InMemoryLogger<Program>();
-        //
-        // var dashboardOptions = BuildOptions(arguments);
-        //
-        // var aspireDashboardManager = new DashboardFactory(dotnet, nugetHelper, new ConsoleLogger<AspireDashboardManager>(arguments.Verbose));
-        // var aspireDashboard = await GetDashboardAsync(aspireDashboardManager, dashboardOptions, arguments);
-        //
-        // aspireDashboard.DashboardStarted += url => logger.LogInformation(Green("The Aspire Dashboard is ready at {Url}"), url);
-        // aspireDashboard.OtlpEndpointReady += endpoint => logger.LogInformation(Green("The OTLP/{Protocol} endpoint is ready at {Url}"), endpoint.Protocol, endpoint.Url);
-        //
-        // var stopHandler = (PosixSignalContext _) => aspireDashboard.Stop();
-        // using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, stopHandler);
-        // using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, stopHandler);
+        mainLayout.Render();
 
-        // try
-        // {
-        //     await aspireDashboard.StartAsync();
-        //     await aspireDashboard.WaitForExitAsync();
-        //
-        //     logger.LogDebug("Aspire Dashboard exited, Errors = {HasErrors}", aspireDashboard.HasErrors);
-        //     return aspireDashboard.HasErrors ? ReturnCodes.AspireDashboardError : ReturnCodes.Success;
-        // }
-        // catch (Exception e)
-        // {
-        //     throw new ConsoleRunnerException
-        //     {
-        //         FormattedMessage = $"An error occurred while starting the Aspire Dashboard: {e.Message}",
-        //         ReturnCode = ReturnCodes.AspireDashboardError
-        //     };
-        // }
+        while (true)
+        {
+            if (AnsiConsole.Profile.Width != currentWidth || AnsiConsole.Profile.Height != currentHeight)
+            {
+                mainLayout["header"].Update(new Align(new Rows(Header, table), HorizontalAlignment.Left, VerticalAlignment.Top));
+                mainLayout.Render();
+                currentWidth = AnsiConsole.Profile.Width;
+                currentHeight = AnsiConsole.Profile.Height;
+            }
+
+            if (Console.KeyAvailable)
+            {
+                var pressedKey = Console.ReadKey(true);
+                switch (pressedKey.Key)
+                {
+                    case ConsoleKey.Escape:
+                    {
+                        await StopDashboard();
+                        return 0;
+                    }
+                    case ConsoleKey.R:
+                    {
+                        await StopDashboard();
+
+                        await dashboard.StartAsync();
+                        await RenderLiveInitialization();
+
+                        mainLayout.Render();
+                        break;
+                    }
+                    case ConsoleKey.S:
+                    {
+                        await StopDashboard();
+                        break;
+                    }
+                }
+            }
+
+            await Task.Delay(5).ConfigureAwait(false);
+        }
+
+        async Task RenderLiveInitialization()
+        {
+            mainLayout["prompt"].Invisible();
+
+            await AnsiConsole.Live(mainLayout)
+                .Overflow(VerticalOverflow.Visible)
+                .Cropping(VerticalOverflowCropping.Bottom)
+                .AutoClear(false)
+                .StartAsync(async ctx =>
+                {
+                    var spinner = !AnsiConsole.Console.Profile.Capabilities.Unicode ? Spinner.Known.Ascii : Spinner.Known.Dots;
+                    var frameIndex = 0;
+
+                    while (dashboard.IsRunning)
+                    {
+                        var currentFrame = new Markup(spinner.Frames[frameIndex % spinner.Frames.Count], new Style(Color.Fuchsia));
+                        table.UpdateCell(0, 0, dashboard.Url is null ? currentFrame : Markup.FromInterpolated($"[link]{dashboard.Url}[/]"));
+
+                        if (grpcEndpointEnabled)
+                        {
+                            var grpcEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase));
+                            table.UpdateCell(0, 1, grpcEndpoint is null ? currentFrame : Markup.FromInterpolated($"[link]{grpcEndpoint.Value.Url}[/]"));
+                        }
+
+                        if (httpEndpointEnabled)
+                        {
+                            var httpEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase));
+                            table.UpdateCell(0, 2, httpEndpoint is null ? currentFrame : Markup.FromInterpolated($"[link]{httpEndpoint.Value.Url}[/]"));
+                        }
+
+                        ctx.Refresh();
+                        if (dashboard.Url != null && dashboard.OtlpEndpoints?.Count == endpointCount)
+                        {
+                            break;
+                        }
+
+                        frameIndex++;
+                        await Task.Delay(spinner.Interval);
+                    }
+                });
+
+            mainLayout["prompt"].Visible();
+        }
+
+        async Task StopDashboard()
+        {
+            await dashboard.StopAsync();
+
+            table.UpdateCell(0, 0, defaultStatus);
+            table.UpdateCell(0, 1, defaultStatus);
+            table.UpdateCell(0, 2, defaultStatus);
+            mainLayout.Render();
+        }
     }
 
-    static DashboardOptions BuildOptions(Settings args)
+    private static DashboardOptions BuildOptions(Settings args)
     {
         var useHttps = args.OtlpHttps ?? args.UseHttps ?? true;
         var corsConfigured = !string.IsNullOrWhiteSpace(args.CorsAllowedOrigins) || !string.IsNullOrWhiteSpace(args.CorsAllowedHeaders);
