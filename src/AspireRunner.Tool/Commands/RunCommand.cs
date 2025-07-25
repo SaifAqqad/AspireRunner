@@ -76,7 +76,8 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         public bool? AutoUpdate { get; set; }
     }
 
-    private bool _dashboardRunning;
+    private Dashboard? _dashboard;
+    private bool _dashboardStarted;
     private int _currentWidth = AnsiConsole.Profile.Width;
     private int _currentHeight = AnsiConsole.Profile.Height;
 
@@ -87,53 +88,38 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         AnsiConsole.Console.EmptyLines(2);
 
         // Prepare dashboard options
-        Dashboard? dashboard = null;
         var dashboardOptions = BuildOptions(settings);
         var otlpEndpoints = GetEnabledEndpoints(dashboardOptions);
 
         // Register runner signal handlers
-        void StopHandler(PosixSignalContext _) => dashboard?.StopAsync().Wait();
+        void StopHandler(PosixSignalContext _) => _dashboard?.StopAsync().Wait();
         using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, StopHandler);
         using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, StopHandler);
 
         // Create and start the dashboard
-        await AnsiConsole.Status()
-            .Spinner(Spinner.Known.Dots)
-            .SpinnerStyle(new Style(Widgets.DefaultColor))
-            .StartAsync("Initializing runner", async ctx =>
-            {
-                var dashboardFactory = new DashboardFactory(new NullLogger<DashboardFactory>(), new NullLoggerFactory());
+        var dashboardFactory = new DashboardFactory(new NullLogger<DashboardFactory>(), new NullLoggerFactory());
+        _dashboard = await dashboardFactory.CreateDashboardAsync(dashboardOptions);
+        if (_dashboard is null)
+        {
+            AnsiConsole.Write(Widgets.Error($"No dashboards found. Run '[bold]{RunnerInfo.CommandName} install[/]' to install the latest version."));
+            return 1;
+        }
 
-                ctx.Status("Looking for installed dashboards");
-                dashboard = await dashboardFactory.CreateDashboardAsync(dashboardOptions);
+        if (settings.Version is not null && !VersionRange.Parse(settings.Version, true).IsSatisfied(_dashboard.Version))
+        {
+            AnsiConsole.Write(Widgets.Error($"No version matching '{settings.Version}' is installed, run '{RunnerInfo.CommandName} install {settings.Version}' to install it"));
+            return 2;
+        }
 
-                if (dashboard is null)
-                {
-                    AnsiConsole.Write(Widgets.Error($"No dashboards found. Run '[bold]{RunnerInfo.CommandName} install[/]' to install the latest version."));
-                    return;
-                }
+        AnsiConsole.MarkupLineInterpolated($"Found dashboard version [{Widgets.DefaultColorText}]{_dashboard.Version}[/] at {_dashboard.InstallationPath}");
 
-                if (settings.Version is not null && !VersionRange.Parse(settings.Version, true).IsSatisfied(dashboard.Version))
-                {
-                    dashboard = null;
-                    AnsiConsole.Write(Widgets.Error($"No version matching '{settings.Version}' is installed, run '{RunnerInfo.CommandName} install {settings.Version}' to install it"));
-                    return;
-                }
+        await _dashboard.StartAsync(CancellationToken.None);
+        _dashboardStarted = _dashboard.IsRunning;
 
-                AnsiConsole.MarkupLineInterpolated($"Found dashboard version [{Widgets.DefaultColorText}]{dashboard.Version}[/] at {dashboard.InstallationPath}");
-
-                ctx.Status("Starting dashboard process...");
-                await dashboard.StartAsync(CancellationToken.None);
-            });
-
-        if (dashboard?.IsRunning is not true)
+        if (!_dashboardStarted)
         {
             return -1;
         }
-
-        _dashboardRunning = true;
-        AnsiConsole.MarkupLine("Dashboard started successfully [green]✓[/]");
-        AnsiConsole.Clear();
 
         // Prepare the main layout
         var defaultStatus = Widgets.StatusSymbol(false);
@@ -183,11 +169,11 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     {
                         await StopDashboardAsync();
 
-                        await dashboard.StartAsync();
+                        await _dashboard.StartAsync();
 
                         // Avoid launching the browser when restarting the dashboard
                         dashboardOptions.Runner.LaunchBrowser = false;
-                        _dashboardRunning = dashboard.IsRunning;
+                        _dashboardStarted = _dashboard.IsRunning;
 
                         await RenderLiveInitializationAsync();
                         mainLayout.Render();
@@ -204,7 +190,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     }
                     case ConsoleKey.B:
                     {
-                        if (dashboard.IsRunning && dashboard.Url is not null && PlatformHelper.GetUrlOpener(dashboard.Url) is { } opener)
+                        if (_dashboard is { IsRunning: true, Url: { } url } && PlatformHelper.GetUrlOpener(url) is { } opener)
                         {
                             ProcessHelper.Run(opener.Executable, opener.Arguments);
                         }
@@ -229,9 +215,9 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         async Task RenderLiveInitializationAsync()
         {
-            mainLayout["prompt"].Update(new Align(new Text(""), HorizontalAlignment.Left, VerticalAlignment.Bottom));
-
+            mainLayout["prompt"].Update(new Text(""));
             AnsiConsole.Clear();
+
             await AnsiConsole.Live(mainLayout)
                 .Overflow(VerticalOverflow.Crop)
                 .Cropping(VerticalOverflowCropping.Bottom)
@@ -240,15 +226,20 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     var spinner = !AnsiConsole.Console.Profile.Capabilities.Unicode ? Spinner.Known.Ascii : Spinner.Known.Dots;
                     var frameIndex = 0;
 
-                    while (dashboard.IsRunning)
+                    while (_dashboard.IsRunning)
                     {
-                        var currentFrame = Markup.FromInterpolated($"[{Widgets.DefaultColorText}]{spinner.Frames[frameIndex % spinner.Frames.Count]}[/]");
+                        var currentFrame = new Markup(spinner.Frames[frameIndex % spinner.Frames.Count], Widgets.DefaultColor);
+                        var currentPrompt = new Align(
+                            new Columns(currentFrame, new Text("Waiting for dashboard startup")).Collapse(),
+                            HorizontalAlignment.Left,
+                            VerticalAlignment.Bottom
+                        );
 
-                        mainLayout["prompt"].Update(new Align(new Columns(currentFrame, new Text("Waiting for dashboard startup")).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Bottom));
+                        mainLayout["prompt"].Update(currentPrompt);
                         UpdateTableCells(currentFrame);
                         ctx.Refresh();
 
-                        if (dashboard.Url != null && dashboard.OtlpEndpoints?.Count == otlpEndpoints.Count)
+                        if (_dashboard.Url != null && _dashboard.OtlpEndpoints?.Count == otlpEndpoints.Count)
                         {
                             break;
                         }
@@ -264,9 +255,9 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         async Task StopDashboardAsync()
         {
-            await dashboard.StopAsync();
+            await _dashboard.StopAsync();
 
-            _dashboardRunning = false;
+            _dashboardStarted = false;
             table.UpdateCell(0, 0, defaultStatus);
             table.UpdateCell(0, 1, defaultStatus);
             table.UpdateCell(0, 2, defaultStatus);
@@ -275,28 +266,28 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         void UpdateTableCells(Renderable defaultContent)
         {
-            table.UpdateCell(0, 0, dashboard.Url is null ? defaultContent : new Columns(Widgets.StatusSymbol(true), Markup.FromInterpolated($"[link]{dashboard.Url}[/]")));
+            table.UpdateCell(0, 0, _dashboard.Url is null ? defaultContent : new Columns(Widgets.StatusSymbol(true), Markup.FromInterpolated($"[link]{_dashboard.Url}[/]")));
             if (otlpEndpoints.Contains("grpc"))
             {
-                var grpcEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase));
+                var grpcEndpoint = _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase));
                 table.UpdateCell(0, 1, grpcEndpoint is null ? defaultContent : new Columns(Widgets.StatusSymbol(true), Markup.FromInterpolated($"[link]{grpcEndpoint.Value.Url}[/]")));
             }
 
             if (otlpEndpoints.Contains("http"))
             {
-                var httpEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase));
+                var httpEndpoint = _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase));
                 table.UpdateCell(0, 2, httpEndpoint is null ? defaultContent : new Columns(Widgets.StatusSymbol(true), Markup.FromInterpolated($"[link]{httpEndpoint.Value.Url}[/]")));
             }
         }
 
         bool CheckDashboardStatusChanged()
         {
-            if (dashboard.IsRunning == _dashboardRunning)
+            if (_dashboard.IsRunning == _dashboardStarted)
             {
                 return false;
             }
 
-            _dashboardRunning = false;
+            _dashboardStarted = false;
             table.UpdateCell(0, 0, defaultStatus);
             table.UpdateCell(0, 1, defaultStatus);
             table.UpdateCell(0, 2, defaultStatus);
