@@ -34,7 +34,13 @@ public static class Widgets
 
     public static Renderable Error(string error)
     {
-        return new Markup($"[red][bold][[Error]][/] {error}[/]\n");
+        return new Markup($"\n[red][bold][[Error]][/] {error}[/]\n");
+    }
+
+    public static Renderable ErrorWidget(this Exception ex)
+    {
+        var message = ex.InnerException is not null ? ex.InnerException.Message : ex.Message;
+        return new Markup($"[red][bold][[Error]][/] {message}[/]");
     }
 
     public static void EmptyLines(this IAnsiConsole console, int count = 1)

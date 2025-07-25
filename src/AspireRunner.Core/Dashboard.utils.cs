@@ -1,4 +1,5 @@
 ﻿using AspireRunner.Core.Models;
+using System.Diagnostics;
 
 namespace AspireRunner.Core;
 
@@ -35,6 +36,33 @@ public partial class Dashboard
     /// Returns the installed dashboard versions in descending order (newest to oldest).
     /// </summary>
     public static Version[] GetInstalledVersions() => [..GetInstalledDashboardsInfo().Select(d => d.Version)];
+
+    /// <summary>
+    /// Attempts to retrieve the currently running instances of the Aspire Dashboard and Runner processes.
+    /// </summary>
+    public static (Process? Dashboard, Process? Runner) TryGetRunningInstance()
+    {
+        var instanceFilePath = Path.Combine(GetRunnerPath(), InstanceFile);
+        if (!File.Exists(instanceFilePath))
+        {
+            return default;
+        }
+
+        var instanceInfo = File.ReadAllText(instanceFilePath);
+        if (string.IsNullOrWhiteSpace(instanceInfo))
+        {
+            return default;
+        }
+
+        var pids = instanceInfo.Split(':', 2);
+        _ = int.TryParse(pids[0], out var dashboardPid);
+        _ = int.TryParse(pids.ElementAtOrDefault(1), out var runnerPid);
+
+        var runner = ProcessHelper.GetProcessOrDefault(runnerPid);
+        var dashboard = ProcessHelper.GetProcessOrDefault(dashboardPid) is { ProcessName: "dotnet" } p ? p : null;
+
+        return (dashboard, runner);
+    }
 
     /// <summary>
     /// Returns the installed dashboards (version and path) in descending order (newest to oldest).

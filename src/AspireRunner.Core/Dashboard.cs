@@ -281,28 +281,4 @@ public partial class Dashboard : IDashboard
         var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
         File.WriteAllText(instanceFilePath, $"{_dashboardProcess!.Id}:{Environment.ProcessId}");
     }
-
-    private (Process? Dashboard, Process? Runner) TryGetRunningInstance()
-    {
-        var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
-        if (!File.Exists(instanceFilePath))
-        {
-            return default;
-        }
-
-        var instanceInfo = File.ReadAllText(instanceFilePath);
-        if (string.IsNullOrWhiteSpace(instanceInfo))
-        {
-            return default;
-        }
-
-        var pids = instanceInfo.Split(':', 2);
-        _ = int.TryParse(pids[0], out var dashboardPid);
-        _ = int.TryParse(pids.ElementAtOrDefault(1), out var runnerPid);
-
-        var runner = ProcessHelper.GetProcessOrDefault(runnerPid);
-        var dashboard = ProcessHelper.GetProcessOrDefault(dashboardPid) is { ProcessName: "dotnet" } p ? p : null;
-
-        return (dashboard, runner);
-    }
 }

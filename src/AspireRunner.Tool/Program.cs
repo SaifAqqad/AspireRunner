@@ -9,25 +9,19 @@ app.Configure(config =>
     config.SetApplicationVersion(RunnerInfo.Version.ToString());
     config.SetExceptionHandler((ex, _) =>
     {
-        if (ex is ApplicationException)
-        {
-            AnsiConsole.Write(Widgets.Error(ex.Message));
-            return -2;
-        }
+        AnsiConsole.Write(Widgets.Error(ex.Message));
 
-        AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
-        return -1;
+#if DEBUG
+        AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths);
+#endif
+
+        return -99;
     });
 
     // Register commands
     config.AddCommand<RunCommand>("run");
     config.AddCommand<InstallCommand>("install");
     config.AddCommand<UninstallCommand>("uninstall");
-
-#if DEBUG
-    config.PropagateExceptions();
-    config.ValidateExamples();
-#endif
 });
 
 app.SetDefaultCommand<RunCommand>().WithDescription($"Aspire Runner v{RunnerInfo.Version}");
