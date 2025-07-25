@@ -5,13 +5,13 @@ var app = new CommandApp();
 
 app.Configure(config =>
 {
-    config.SetApplicationName(Runner.CommandName);
-    config.SetApplicationVersion(Runner.Version.ToString());
+    config.SetApplicationName(RunnerInfo.CommandName);
+    config.SetApplicationVersion(RunnerInfo.Version.ToString());
     config.SetExceptionHandler((ex, _) =>
     {
         if (ex is ApplicationException)
         {
-            AnsiConsole.MarkupLineInterpolated($"[red bold][[Error]][/] {ex.Message}");
+            AnsiConsole.Write(Widgets.Error(ex.Message));
             return -2;
         }
 
@@ -30,5 +30,5 @@ app.Configure(config =>
 #endif
 });
 
-app.SetDefaultCommand<RunCommand>().WithDescription($"Aspire Runner v{Runner.Version}");
+app.SetDefaultCommand<RunCommand>().WithDescription($"Aspire Runner v{RunnerInfo.Version}");
 return await app.RunAsync(args);

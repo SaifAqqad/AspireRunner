@@ -2,7 +2,7 @@
 
 namespace AspireRunner.Tool;
 
-public static class Runner
+public static class RunnerInfo
 {
     private static readonly Dictionary<string, string?> AssemblyMetadata = Assembly.GetEntryAssembly()?
         .GetCustomAttributes<AssemblyMetadataAttribute>()
