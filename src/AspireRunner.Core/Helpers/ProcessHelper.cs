@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace AspireRunner.Core.Helpers;
 
-internal static class ProcessHelper
+public static class ProcessHelper
 {
     public static async Task<(string Output, string Error)> GetAsync(string processName, string[] arguments, IDictionary<string, string?>? environment = null, string? workingDir = null)
     {

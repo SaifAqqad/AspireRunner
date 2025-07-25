@@ -14,5 +14,6 @@ public static class ConsoleExtensions
     {
         AnsiConsole.Clear();
         AnsiConsole.Write(layout);
+        AnsiConsole.Cursor.Hide();
     }
 }

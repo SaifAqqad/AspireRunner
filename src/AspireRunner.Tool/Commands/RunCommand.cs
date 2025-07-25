@@ -81,42 +81,40 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         public bool Verbose { get; set; }
     }
 
-    private readonly Renderable _smallHeader = Markup.FromInterpolated($"[fuchsia][link={Runner.ProjectUrl}]Aspire Runner[/][/]");
-    private readonly Renderable _largeHeader = new FigletText("Aspire Runner").LeftJustified().Color(Color.Fuchsia);
+    private static readonly Color DefaultColor = Color.SlateBlue3_1;
+    private static readonly string DefaultColorText = DefaultColor.ToMarkup();
+    private static readonly Renderable RunnerVersion = new Markup($"[{DefaultColorText} dim]v{Runner.Version}[/]");
+    private static readonly Renderable SmallHeader = Markup.FromInterpolated($"[{DefaultColorText}][link={Runner.ProjectUrl}]Aspire Runner[/][/]\n");
+    private static readonly Renderable LargeHeader = new FigletText("Aspire Runner").LeftJustified().Color(DefaultColor);
+    private static readonly Renderable Prompt = Markup.FromInterpolated(
+        $"""
+         Press [{DefaultColorText} bold]S[/] to stop the dashboard, [{DefaultColorText} bold]R[/] to restart it, or [{DefaultColorText} bold]Esc[/]/[{DefaultColorText} bold]Ctrl+C[/] to exit the runner
+         """);
 
-    private Renderable Header => AnsiConsole.Profile.Height < 15 || AnsiConsole.Profile.Width < 90 ? _smallHeader : _largeHeader;
-
-    private Renderable GetStatusSymbol(bool status)
-    {
-        var style = status ?
-            new Style(Color.Green, decoration: Decoration.Bold) :
-            new Style(Color.Red, decoration: Decoration.Bold);
-
-        return new Markup("○", style);
-    }
+    private bool _dashboardRunning;
+    private int _currentWidth = AnsiConsole.Profile.Width;
+    private int _currentHeight = AnsiConsole.Profile.Height;
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        AnsiConsole.Write(Header);
-        AnsiConsole.Write(new Markup($"Version [fuchsia]{Runner.Version}[/]"));
+        AnsiConsole.Write(GetHeader());
+        AnsiConsole.Write(RunnerVersion);
         AnsiConsole.Console.EmptyLines(2);
 
         // Prepare dashboard options
         Dashboard? dashboard = null;
         var dashboardOptions = BuildOptions(settings);
-        var httpEndpointEnabled = dashboardOptions.Otlp.HttpEndpointUrl is not null;
-        var grpcEndpointEnabled = dashboardOptions.Otlp.EndpointUrl is not null || (dashboardOptions.Otlp.EndpointUrl is null && dashboardOptions.Otlp.HttpEndpointUrl is null);
-        var endpointCount = grpcEndpointEnabled.GetHashCode() | httpEndpointEnabled.GetHashCode();
+        var otlpEndpoints = GetEnabledEndpoints(dashboardOptions);
 
         // Register runner signal handlers
         void StopHandler(PosixSignalContext _) => dashboard?.StopAsync().Wait();
         using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, StopHandler);
         using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, StopHandler);
 
-        // Start initializing the dashboard
+        // Create and start the dashboard
         await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
-            .SpinnerStyle(new Style(Color.Fuchsia))
+            .SpinnerStyle(new Style(DefaultColor))
             .StartAsync("Initializing runner", async ctx =>
             {
                 var dashboardFactory = new DashboardFactory(new NullLogger<DashboardFactory>(), new NullLoggerFactory());
@@ -126,18 +124,18 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
                 if (dashboard is null)
                 {
-                    AnsiConsole.MarkupLineInterpolated($"[red]Couldn't find any dashboards installed, run '{Runner.CommandName} install' to install the latest version[/]");
+                    WriteError($"No dashboards found. Run '[bold]{Runner.CommandName} install[/]' to install the latest version.");
                     return;
                 }
 
                 if (settings.Version is not null && !VersionRange.Parse(settings.Version, true).IsSatisfied(dashboard.Version))
                 {
-                    AnsiConsole.MarkupLineInterpolated($"[red]No version matching '{settings.Version}' is installed, run '{Runner.CommandName} install {settings.Version}' to install it[/]");
                     dashboard = null;
+                    WriteError($"No version matching '{settings.Version}' is installed, run '{Runner.CommandName} install {settings.Version}' to install it");
                     return;
                 }
 
-                AnsiConsole.MarkupLineInterpolated($"Found dashboard version [fuchsia]{dashboard.Version}[/] at {dashboard.InstallationPath}");
+                AnsiConsole.MarkupLineInterpolated($"Found dashboard version [{DefaultColorText}]{dashboard.Version}[/] at {dashboard.InstallationPath}");
 
                 ctx.Status("Starting dashboard process...");
                 await dashboard.StartAsync(CancellationToken.None);
@@ -145,44 +143,42 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         if (dashboard?.IsRunning is not true)
         {
-            AnsiConsole.MarkupLineInterpolated($"[red]Failed to start dashboard[/]");
             return -1;
         }
 
+        _dashboardRunning = true;
         AnsiConsole.MarkupLine("Dashboard started successfully [green]✓[/]");
         AnsiConsole.Clear();
 
         // Prepare the main layout
         var defaultStatus = GetStatusSymbol(false);
         var table = new Table()
-            .BorderStyle(new Style(Color.Fuchsia, decoration: Decoration.Dim))
-            .AddColumn("Dashboard", c => c.Centered())
-            .AddColumn("OTLP/gRPC", c => c.Centered())
-            .AddColumn("OTLP/HTTP", c => c.Centered())
+            .BorderStyle(new Style(DefaultColor, decoration: Decoration.Dim))
+            .AddColumn("Dashboard", c => c.Centered().Width(30))
+            .AddColumn("OTLP/gRPC", c => c.Centered().Width(30))
+            .AddColumn("OTLP/HTTP", c => c.Centered().Width(30))
             .AddRow(defaultStatus, defaultStatus, defaultStatus);
 
-        var actionsPrompt = Markup.FromInterpolated($"Press [fuchsia bold]S[/] to stop the dashbord, [fuchsia bold]R[/] to restart it, or [fuchsia bold]Esc[/]/[fuchsia bold]Ctrl+C[/] to exit the runner");
         var mainLayout = new Layout("main").SplitRows(
-            new Layout("header", new Align(new Rows(Header, table), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(10),
-            new Layout("prompt", new Align(actionsPrompt, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(3)
+            new Layout("header", new Align(new Rows(GetHeader(), RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(5),
+            new Layout("table", new Align(table, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(6),
+            new Layout("prompt", new Align(Prompt, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(1)
         );
 
-        // Render the main layout
-        await RenderLiveInitialization();
+        // Render the live layout (with spinners) while the dashboard is still initializing
+        await RenderLiveInitializationAsync();
 
-        var currentWidth = AnsiConsole.Profile.Width;
-        var currentHeight = AnsiConsole.Profile.Height;
-
+        // Re-render the static layout
         mainLayout.Render();
+        var lastRenderTime = DateTimeOffset.UtcNow;
 
         while (true)
         {
-            if (AnsiConsole.Profile.Width != currentWidth || AnsiConsole.Profile.Height != currentHeight)
+            if (CheckDashboardStatusChanged()
+                | CheckConsoleSizeChanged()
+                | CheckRenderTimeout())
             {
-                mainLayout["header"].Update(new Align(new Rows(Header, table), HorizontalAlignment.Left, VerticalAlignment.Top));
                 mainLayout.Render();
-                currentWidth = AnsiConsole.Profile.Width;
-                currentHeight = AnsiConsole.Profile.Height;
             }
 
             if (Console.KeyAvailable)
@@ -190,24 +186,37 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                 var pressedKey = Console.ReadKey(true);
                 switch (pressedKey.Key)
                 {
-                    case ConsoleKey.Escape:
-                    {
-                        await StopDashboard();
-                        return 0;
-                    }
                     case ConsoleKey.R:
                     {
-                        await StopDashboard();
+                        await StopDashboardAsync();
 
                         await dashboard.StartAsync();
-                        await RenderLiveInitialization();
 
+                        // Avoid launching the browser when restarting the dashboard
+                        dashboardOptions.Runner.LaunchBrowser = false;
+                        _dashboardRunning = dashboard.IsRunning;
+
+                        await RenderLiveInitializationAsync();
                         mainLayout.Render();
                         break;
                     }
+                    case ConsoleKey.H or ConsoleKey.Help:
+                    {
+                        if (PlatformHelper.GetUrlOpener(Runner.ProjectUrl) is { } opener)
+                        {
+                            ProcessHelper.Run(opener.Executable, opener.Arguments);
+                        }
+
+                        break;
+                    }
+                    case ConsoleKey.Escape:
+                    {
+                        await StopDashboardAsync();
+                        return 0;
+                    }
                     case ConsoleKey.S:
                     {
-                        await StopDashboard();
+                        await StopDashboardAsync();
                         break;
                     }
                 }
@@ -216,14 +225,14 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             await Task.Delay(5).ConfigureAwait(false);
         }
 
-        async Task RenderLiveInitialization()
+        async Task RenderLiveInitializationAsync()
         {
-            mainLayout["prompt"].Invisible();
+            mainLayout["prompt"].Update(new Align(new Text(""), HorizontalAlignment.Left, VerticalAlignment.Bottom));
 
+            AnsiConsole.Clear();
             await AnsiConsole.Live(mainLayout)
-                .Overflow(VerticalOverflow.Visible)
+                .Overflow(VerticalOverflow.Crop)
                 .Cropping(VerticalOverflowCropping.Bottom)
-                .AutoClear(false)
                 .StartAsync(async ctx =>
                 {
                     var spinner = !AnsiConsole.Console.Profile.Capabilities.Unicode ? Spinner.Known.Ascii : Spinner.Known.Dots;
@@ -231,23 +240,13 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
                     while (dashboard.IsRunning)
                     {
-                        var currentFrame = new Markup(spinner.Frames[frameIndex % spinner.Frames.Count], new Style(Color.Fuchsia));
-                        table.UpdateCell(0, 0, dashboard.Url is null ? currentFrame : Markup.FromInterpolated($"[link]{dashboard.Url}[/]"));
+                        var currentFrame = Markup.FromInterpolated($"[{DefaultColorText}]{spinner.Frames[frameIndex % spinner.Frames.Count]}[/]");
 
-                        if (grpcEndpointEnabled)
-                        {
-                            var grpcEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase));
-                            table.UpdateCell(0, 1, grpcEndpoint is null ? currentFrame : Markup.FromInterpolated($"[link]{grpcEndpoint.Value.Url}[/]"));
-                        }
-
-                        if (httpEndpointEnabled)
-                        {
-                            var httpEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase));
-                            table.UpdateCell(0, 2, httpEndpoint is null ? currentFrame : Markup.FromInterpolated($"[link]{httpEndpoint.Value.Url}[/]"));
-                        }
-
+                        mainLayout["prompt"].Update(new Align(new Columns(currentFrame, new Text("Waiting for dashboard startup")).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Bottom));
+                        UpdateTableCells(currentFrame);
                         ctx.Refresh();
-                        if (dashboard.Url != null && dashboard.OtlpEndpoints?.Count == endpointCount)
+
+                        if (dashboard.Url != null && dashboard.OtlpEndpoints?.Count == otlpEndpoints.Count)
                         {
                             break;
                         }
@@ -257,18 +256,94 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     }
                 });
 
-            mainLayout["prompt"].Visible();
+            mainLayout["prompt"].Update(new Align(Prompt, HorizontalAlignment.Left, VerticalAlignment.Bottom));
+            UpdateTableCells(defaultStatus);
         }
 
-        async Task StopDashboard()
+        async Task StopDashboardAsync()
         {
             await dashboard.StopAsync();
 
+            _dashboardRunning = false;
             table.UpdateCell(0, 0, defaultStatus);
             table.UpdateCell(0, 1, defaultStatus);
             table.UpdateCell(0, 2, defaultStatus);
             mainLayout.Render();
         }
+
+        void UpdateTableCells(Renderable defaultContent)
+        {
+            table.UpdateCell(0, 0, dashboard.Url is null ? defaultContent : new Columns(GetStatusSymbol(true), Markup.FromInterpolated($"[link]{dashboard.Url}[/]")));
+            if (otlpEndpoints.Contains("grpc"))
+            {
+                var grpcEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase));
+                table.UpdateCell(0, 1, grpcEndpoint is null ? defaultContent : new Columns(GetStatusSymbol(true), Markup.FromInterpolated($"[link]{grpcEndpoint.Value.Url}[/]")));
+            }
+
+            if (otlpEndpoints.Contains("http"))
+            {
+                var httpEndpoint = dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase));
+                table.UpdateCell(0, 2, httpEndpoint is null ? defaultContent : new Columns(GetStatusSymbol(true), Markup.FromInterpolated($"[link]{httpEndpoint.Value.Url}[/]")));
+            }
+        }
+
+        bool CheckDashboardStatusChanged()
+        {
+            if (dashboard.IsRunning == _dashboardRunning)
+            {
+                return false;
+            }
+
+            _dashboardRunning = false;
+            table.UpdateCell(0, 0, defaultStatus);
+            table.UpdateCell(0, 1, defaultStatus);
+            table.UpdateCell(0, 2, defaultStatus);
+            return true;
+        }
+
+        bool CheckConsoleSizeChanged()
+        {
+            if (AnsiConsole.Profile.Width == _currentWidth && AnsiConsole.Profile.Height == _currentHeight)
+            {
+                return false;
+            }
+
+            _currentWidth = AnsiConsole.Profile.Width;
+            _currentHeight = AnsiConsole.Profile.Height;
+            mainLayout["header"].Update(new Align(new Rows(GetHeader(), RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top));
+
+            return true;
+        }
+
+        bool CheckRenderTimeout()
+        {
+            if (DateTimeOffset.UtcNow - lastRenderTime > TimeSpan.FromSeconds(5))
+            {
+                lastRenderTime = DateTimeOffset.UtcNow;
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    private static Renderable GetHeader()
+    {
+        return AnsiConsole.Profile.Height <= 15 || AnsiConsole.Profile.Width <= 90 ? SmallHeader : LargeHeader;
+    }
+
+    private static Renderable GetStatusSymbol(bool status)
+    {
+        var style = status ?
+            new Style(Color.Green, decoration: Decoration.Bold) :
+            new Style(Color.Red, decoration: Decoration.Bold);
+
+        return new Markup("○", style);
+    }
+
+    private static void WriteError(string error)
+    {
+        AnsiConsole.MarkupLine($"[red][bold][[Error]][/] {error}[/]");
     }
 
     private static DashboardOptions BuildOptions(Settings args)
@@ -317,5 +392,21 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         }
 
         return aspireDashboardOptions;
+    }
+
+    private static IReadOnlyCollection<string> GetEnabledEndpoints(DashboardOptions dashboardOptions)
+    {
+        var enabledEndpoints = new List<string>();
+        if (dashboardOptions.Otlp.HttpEndpointUrl is not null)
+        {
+            enabledEndpoints.Add("http");
+        }
+
+        if (dashboardOptions.Otlp.EndpointUrl is not null)
+        {
+            enabledEndpoints.Add("grpc");
+        }
+
+        return enabledEndpoints;
     }
 }
