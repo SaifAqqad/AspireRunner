@@ -24,10 +24,4 @@ public static class EnvironmentVariables
     }
 
     private static string? GetValue(string name) => Environment.GetEnvironmentVariable(name);
-
-    private static bool IsEnabled(string name)
-    {
-        var value = Environment.GetEnvironmentVariable(name);
-        return value is not null && bool.TryParse(value, out var result) && result;
-    }
 }
