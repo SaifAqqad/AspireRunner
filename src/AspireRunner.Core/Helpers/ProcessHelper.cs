@@ -54,7 +54,14 @@ public static class ProcessHelper
 
     public static bool IsRunning([NotNullWhen(true)] this Process? process)
     {
-        return process?.HasExited is false;
+        try
+        {
+            return process?.HasExited is false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public static Process? GetProcessOrDefault(int pid)

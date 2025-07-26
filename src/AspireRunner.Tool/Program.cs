@@ -22,6 +22,7 @@ app.Configure(config =>
     config.AddCommand<RunCommand>("run");
     config.AddCommand<InstallCommand>("install");
     config.AddCommand<UninstallCommand>("uninstall");
+    config.AddCommand<CleanupCommand>("cleanup").WithDescription("Remove old versions of the dashboard and other temporary files");
 });
 
 app.SetDefaultCommand<RunCommand>().WithDescription($"Aspire Runner v{RunnerInfo.Version}");

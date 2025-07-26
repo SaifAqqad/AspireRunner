@@ -83,9 +83,8 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        AnsiConsole.Write(Widgets.Header());
-        AnsiConsole.Write(Widgets.RunnerVersion);
-        AnsiConsole.Console.EmptyLines(2);
+        Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
+        Widgets.WriteLines(2);
 
         // Prepare dashboard options
         var dashboardOptions = BuildOptions(settings);
@@ -101,17 +100,28 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         _dashboard = await dashboardFactory.CreateDashboardAsync(dashboardOptions);
         if (_dashboard is null)
         {
-            AnsiConsole.Write(Widgets.Error($"No dashboards found. Run '[bold]{RunnerInfo.CommandName} install[/]' to install the latest version."));
-            return 1;
+            Widgets.Write("No dashboards found. Installing the latest version...", true);
+            var installationResult = await new InstallCommand().ExecuteAsync(context, new() { Version = "latest" });
+            if (installationResult is not 0)
+            {
+                return installationResult;
+            }
+
+            _dashboard = await dashboardFactory.CreateDashboardAsync(dashboardOptions);
+            if (_dashboard is null)
+            {
+                Widgets.Write(Widgets.Error("Failed to create a dashboard instance after installation"));
+                return -1;
+            }
         }
 
         if (settings.Version is not null && !VersionRange.Parse(settings.Version, true).IsSatisfied(_dashboard.Version))
         {
-            AnsiConsole.Write(Widgets.Error($"No version matching '{settings.Version}' is installed, run '{RunnerInfo.CommandName} install {settings.Version}' to install it"));
+            Widgets.Write(Widgets.Error($"No version matching '{settings.Version}' is installed, run '{RunnerInfo.CommandName} install {settings.Version}' to install it"));
             return 2;
         }
 
-        AnsiConsole.MarkupLineInterpolated($"Found dashboard version [{Widgets.DefaultColorText}]{_dashboard.Version}[/] at {_dashboard.InstallationPath}");
+        Widgets.WriteInterpolated($"Found dashboard version [{Widgets.DefaultColorText}]{_dashboard.Version}[/] at {_dashboard.InstallationPath}", true);
 
         await _dashboard.StartAsync(CancellationToken.None);
         _dashboardStarted = _dashboard.IsRunning;

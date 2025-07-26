@@ -1,7 +1,6 @@
 ﻿using AspireRunner.Core.Abstractions;
 using AspireRunner.Installer;
 using Microsoft.Extensions.Logging.Abstractions;
-using Spectre.Console.Extensions;
 using System.ComponentModel;
 
 namespace AspireRunner.Tool.Commands;
@@ -19,14 +18,13 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        AnsiConsole.Write(Widgets.Header());
-        AnsiConsole.Write(Widgets.RunnerVersion);
-        AnsiConsole.Console.EmptyLines(2);
+        Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
+        Widgets.WriteLines(2);
 
         var runningInstance = Dashboard.TryGetRunningInstance();
         if (runningInstance.Dashboard.IsRunning())
         {
-            AnsiConsole.Write(Widgets.Error(
+            Widgets.Write(Widgets.Error(
                 $"An instance of the dashboard is currently running (PID = [{Widgets.DefaultColorText}]{runningInstance.Dashboard.Id}[/]). Please stop it before attempting to uninstall"
             ));
 
@@ -36,20 +34,21 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
         var installedVersions = Dashboard.GetInstalledVersions();
         if (installedVersions.Length is 0)
         {
-            AnsiConsole.MarkupLine("No versions of the dashboard are installed");
+            Widgets.Write("No versions of the dashboard are installed", true);
             return 0;
         }
 
-        if (settings.Version is "all" or "*")
+        var success = true;
+        if (settings.Version?.ToLowerInvariant() is "all" or "*")
         {
-            AnsiConsole.MarkupLineInterpolated($"Found [{Widgets.DefaultColorText}]{installedVersions.Length}[/] versions installed");
+            Widgets.WriteInterpolated($"Found [{Widgets.DefaultColorText}]{installedVersions.Length}[/] versions installed", true);
 
             foreach (var version in installedVersions)
             {
-                await UninstallVersionAsync(version);
+                success &= await UninstallVersionAsync(version);
             }
 
-            return 0;
+            return success ? 0 : -99;
         }
 
         if (!string.IsNullOrWhiteSpace(settings.Version) && VersionRange.TryParse(settings.Version, true, out var versionRange))
@@ -57,32 +56,31 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
             var matchingVersions = installedVersions.Where(v => versionRange.IsSatisfied(v)).ToArray();
             if (matchingVersions.Length is 0)
             {
-                AnsiConsole.MarkupLine($"No versions matching '{settings.Version}' are installed");
+                Widgets.WriteInterpolated($"No versions matching '{settings.Version}' are installed", true);
                 return 1;
             }
 
             if (matchingVersions.Length is 1)
             {
-                await UninstallVersionAsync(matchingVersions[0]);
-                return 0;
+                return await UninstallVersionAsync(matchingVersions[0]) ? 0 : -99;
             }
 
             var versionsToUninstall = await PromptVersionsAsync(matchingVersions);
             foreach (var version in versionsToUninstall)
             {
-                await UninstallVersionAsync(version);
+                success &= await UninstallVersionAsync(version);
             }
-
-            return 0;
         }
-
-        var versions = await PromptVersionsAsync(installedVersions);
-        foreach (var version in versions)
+        else
         {
-            await UninstallVersionAsync(version);
+            var versions = await PromptVersionsAsync(installedVersions);
+            foreach (var version in versions)
+            {
+                success &= await UninstallVersionAsync(version);
+            }
         }
 
-        return 0;
+        return success ? 0 : -99;
     }
 
     private async Task<IEnumerable<Version>> PromptVersionsAsync(Version[] versions)
@@ -95,7 +93,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
                 .AddChoices(["All", ..versions.Select(v => v.ToString())])
         );
 
-        if (selected == "All")
+        if (selected is "All")
         {
             return versions;
         }
@@ -103,29 +101,23 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
         return versions.Where(v => selected == v.ToString());
     }
 
-    private async Task UninstallVersionAsync(Version version)
+    internal async Task<bool> UninstallVersionAsync(Version version)
     {
+        var success = false;
+
         try
         {
-            AnsiConsole.MarkupInterpolated($"Uninstalling version {version}");
-            var success = await _installer.RemoveAsync(version, CancellationToken.None)
-                .Spinner(Spinner.Known.Dots, Widgets.DefaultColor);
+            Widgets.WriteInterpolated($"Uninstalling version [{Widgets.DefaultColorText}]{version}[/] ");
+            success = await _installer.RemoveAsync(version, CancellationToken.None).ShowSpinner();
 
-            if (success)
-            {
-                AnsiConsole.Markup(" [green]✓[/]");
-            }
-            else
-            {
-                AnsiConsole.Markup(" [red]✕[/]");
-            }
+            Widgets.Write(success ? Widgets.SuccessCheck() : Widgets.ErrorCross());
         }
         catch (Exception ex)
         {
-            AnsiConsole.Markup(" [red]✕[/] ");
-            AnsiConsole.Write(ex.ErrorWidget());
+            Widgets.Write([Widgets.ErrorCross(), " ".Widget(), ex.ErrorWidget()]);
         }
 
-        AnsiConsole.WriteLine();
+        Widgets.WriteLines();
+        return success;
     }
 }
