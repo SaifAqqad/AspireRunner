@@ -6,9 +6,17 @@ public interface IDashboard
 
     DashboardOptions Options { get; }
 
+    string InstallationPath { get; }
+
     bool HasErrors { get; }
 
     bool IsRunning { get; }
+
+    int? Pid { get; }
+
+    string? Url { get; }
+
+    IReadOnlyList<(string Url, string Protocol)>? OtlpEndpoints { get; }
 
     /// <summary>
     /// Triggered when the Aspire Dashboard has started and the UI is ready.

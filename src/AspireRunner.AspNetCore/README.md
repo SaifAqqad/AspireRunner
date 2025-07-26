@@ -2,9 +2,14 @@
 
 A library for running the Aspire Dashboard alongside ASP.NET Core apps.
 
-The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any application, although this is intended to be used for local development only.
+The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any application. This is intended
+to be used for local development only.
 
-[![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.AspNetCore?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.AspNetCore)](https://www.nuget.org/packages/AspireRunner.Tool)
+[![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.AspNetCore?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.AspNetCore)](https://www.nuget.org/packages/AspireRunner.AspNetCore)
+
+> [!IMPORTANT]
+> The package depends on the dashboard being pre-installed on the machine either using the dotnet tool or
+> the installer package. For more info, refer to the [installer package docs](../AspireRunner.Installer/README.md)
 
 ### Example usage
 
@@ -46,7 +51,8 @@ await app.RunAsync();
 ```
 
 > [!NOTE]
-> The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`).
+> By default, The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`),
+> this can be changed by setting the `ASPIRE_RUNNER_PATH` environment variable.
 
 ### Configuration
 
