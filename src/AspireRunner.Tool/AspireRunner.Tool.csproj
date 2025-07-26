@@ -31,10 +31,35 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AspireRunner.Core\AspireRunner.Core.csproj" />
+        <ProjectReference Include="..\AspireRunner.Core\AspireRunner.Core.csproj"/>
+        <ProjectReference Include="..\AspireRunner.Installer\AspireRunner.Installer.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Spectre.Console" Version="0.50.0"/>
+        <PackageReference Include="Spectre.Console.Analyzer" Version="1.0.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Spectre.Console.Cli" Version="0.50.0"/>
     </ItemGroup>
 
     <PropertyGroup>
         <NoWarn>$(NoWarn);CA2254</NoWarn>
     </PropertyGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>PackageProjectUrl</_Parameter1>
+            <_Parameter2>$(PackageProjectUrl)</_Parameter2>
+        </AssemblyAttribute>
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>Version</_Parameter1>
+            <_Parameter2>$(Version)</_Parameter2>
+        </AssemblyAttribute>
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>CommandName</_Parameter1>
+            <_Parameter2>$(ToolCommandName)</_Parameter2>
+        </AssemblyAttribute>
+    </ItemGroup>
 </Project>

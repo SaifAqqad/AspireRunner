@@ -1,5 +1,4 @@
 ﻿using AspireRunner.Core.Extensions;
-using AspireRunner.Core.Helpers;
 using Medallion.Threading.FileSystem;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -14,7 +13,6 @@ public partial class Dashboard : IDashboard
     private Process? _dashboardProcess;
     private bool _stopRequested;
 
-    private readonly string _dllPath;
     private readonly string _runnerPath;
     private readonly ILogger<Dashboard> _logger;
     private readonly FileDistributedLock _instanceLock;
@@ -24,21 +22,29 @@ public partial class Dashboard : IDashboard
 
     public DashboardOptions Options { get; }
 
-    public event Action<string>? DashboardStarted;
+    public string InstallationPath { get; }
 
-    public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
+    public string? Url { get; private set; }
+
+    public IReadOnlyList<(string Url, string Protocol)>? OtlpEndpoints { get; private set; }
 
     public bool HasErrors { get; private set; }
 
     public bool IsRunning => _dashboardProcess.IsRunning();
 
+    public int? Pid => _dashboardProcess?.Id;
+
+    public event Action<string>? DashboardStarted;
+
+    public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
+
     internal Dashboard(Version version, string dllPath, DashboardOptions options, ILogger<Dashboard> logger)
     {
         Version = version;
         Options = options;
+        InstallationPath = dllPath;
 
         _logger = logger;
-        _dllPath = dllPath;
         _runnerPath = GetRunnerPath();
         _environmentVariables = options.ToEnvironmentVariables();
         _instanceLock = new FileDistributedLock(new DirectoryInfo(_runnerPath), InstanceLock);
@@ -119,7 +125,14 @@ public partial class Dashboard : IDashboard
                 }
             }
 
-            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(_dllPath, DllName)], _environmentVariables, _dllPath, OutputHandler, ErrorHandler);
+            // Reset instance state
+            Url = null;
+            HasErrors = false;
+            OtlpEndpoints = null;
+            _lastError = null;
+            _lastErrorTime = null;
+
+            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(InstallationPath, DllName)], _environmentVariables, InstallationPath, OutputHandler, ErrorHandler);
             if (_dashboardProcess is null)
             {
                 LogFailedToStartDashboardProcess();
@@ -177,21 +190,22 @@ public partial class Dashboard : IDashboard
 
         if (DashboardLaunchUrlRegex().Match(output) is { Success: true } match)
         {
-            var url = FormatUrl(match.Groups["url"].Value);
+            Url = UrlHelper.ReplaceDefaultRoute(match.Groups["url"].Value);
             if (Options.Runner.LaunchBrowser)
             {
-                _ = LaunchBrowserAsync(url);
+                _ = LaunchBrowserAsync(Url);
             }
 
-            DashboardStarted?.Invoke(url);
+            DashboardStarted?.Invoke(Url);
         }
 
         if (OtlpEndpointRegex().Match(output) is { Success: true } otlpMatch)
         {
-            var url = FormatUrl(otlpMatch.Groups["url"].Value);
-            var protocol = otlpMatch.Groups["protocol"].Value;
+            var endpoint = (UrlHelper.ReplaceDefaultRoute(otlpMatch.Groups["url"].Value), otlpMatch.Groups["protocol"].Value);
+            var endpoints = (List<(string Url, string Protocol)>)(OtlpEndpoints ??= new List<(string Url, string Protocol)>());
+            endpoints.Add(endpoint);
 
-            OtlpEndpointReady?.Invoke((url, protocol));
+            OtlpEndpointReady?.Invoke(endpoint);
         }
     }
 
@@ -266,29 +280,5 @@ public partial class Dashboard : IDashboard
 
         var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
         File.WriteAllText(instanceFilePath, $"{_dashboardProcess!.Id}:{Environment.ProcessId}");
-    }
-
-    private (Process? Dashboard, Process? Runner) TryGetRunningInstance()
-    {
-        var instanceFilePath = Path.Combine(_runnerPath, InstanceFile);
-        if (!File.Exists(instanceFilePath))
-        {
-            return default;
-        }
-
-        var instanceInfo = File.ReadAllText(instanceFilePath);
-        if (string.IsNullOrWhiteSpace(instanceInfo))
-        {
-            return default;
-        }
-
-        var pids = instanceInfo.Split(':', 2);
-        _ = int.TryParse(pids[0], out var dashboardPid);
-        _ = int.TryParse(pids.ElementAtOrDefault(1), out var runnerPid);
-
-        var runner = ProcessHelper.GetProcessOrDefault(runnerPid);
-        var dashboard = ProcessHelper.GetProcessOrDefault(dashboardPid) is { ProcessName: "dotnet" } p ? p : null;
-
-        return (dashboard, runner);
     }
 }

@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace AspireRunner.Core.Helpers;
 
-internal static class ProcessHelper
+public static class ProcessHelper
 {
     public static async Task<(string Output, string Error)> GetAsync(string processName, string[] arguments, IDictionary<string, string?>? environment = null, string? workingDir = null)
     {
@@ -54,7 +54,14 @@ internal static class ProcessHelper
 
     public static bool IsRunning([NotNullWhen(true)] this Process? process)
     {
-        return process?.HasExited is false;
+        try
+        {
+            return process?.HasExited is false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public static Process? GetProcessOrDefault(int pid)
