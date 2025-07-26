@@ -1,6 +1,8 @@
 ﻿using AspireRunner.Tool;
 using AspireRunner.Tool.Commands;
 
+// Ensure console is using UTF-8 encoding
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 var app = new CommandApp();
 
 app.Configure(config =>
