@@ -85,6 +85,13 @@ public class InstallCommand : AsyncCommand<InstallCommand.Settings>
 
         try
         {
+            var installedVersions = Dashboard.GetInstalledVersions();
+            if (installedVersions.Any(v => v == version))
+            {
+                Widgets.Write([$"Version {version} is already installed ".Widget(), Widgets.SuccessCheck()]);
+                return true;
+            }
+
             Widgets.WriteInterpolated($"Installing version [{Widgets.DefaultColorText}]{version}[/] ");
             success = await _installer.InstallAsync(version, CancellationToken.None).ShowSpinner();
 
