@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using AspireRunner.Installer;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Spectre.Console.Rendering;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -95,6 +97,20 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         // Prepare dashboard options
         var dashboardOptions = BuildOptions(settings);
         var otlpEndpoints = GetEnabledEndpoints(dashboardOptions);
+
+        if (dashboardOptions.Runner.AutoUpdate)
+        {
+            var installer = new DashboardInstaller(Logger.DefaultFactory.CreateLogger<DashboardInstaller>());
+
+            Widgets.Write("Checking for updates ");
+            var result = await installer.EnsureLatestAsync().ShowSpinner();
+            Widgets.Write(Widgets.SuccessCheck(), true);
+
+            if (result.Installed != result.Latest)
+            {
+                Widgets.Write([$"Dashboard updated to version {result.Latest} ".Widget(), Widgets.SuccessCheck()], true);
+            }
+        }
 
         // Register runner signal handlers
         using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, SignalHandler);
