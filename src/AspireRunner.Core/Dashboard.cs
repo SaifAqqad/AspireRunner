@@ -2,14 +2,11 @@
 using Medallion.Threading.FileSystem;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using System.Text;
 
 namespace AspireRunner.Core;
 
 public partial class Dashboard : IDashboard
 {
-    private StringBuilder? _lastError;
-    private DateTimeOffset? _lastErrorTime;
     private Process? _dashboardProcess;
     private bool _stopRequested;
 
@@ -125,14 +122,8 @@ public partial class Dashboard : IDashboard
                 }
             }
 
-            // Reset instance state
-            Url = null;
-            HasErrors = false;
-            OtlpEndpoints = null;
-            _lastError = null;
-            _lastErrorTime = null;
-
-            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(InstallationPath, DllName)], _environmentVariables, InstallationPath, OutputHandler, ErrorHandler);
+            ClearInstanceState();
+            _dashboardProcess = ProcessHelper.Run(DotnetCli.Executable, ["exec", Path.Combine(InstallationPath, DllName)], _environmentVariables, InstallationPath, OnStandardOutput);
             if (_dashboardProcess is null)
             {
                 LogFailedToStartDashboardProcess();
@@ -175,13 +166,8 @@ public partial class Dashboard : IDashboard
         };
     }
 
-    private void OutputHandler(string output)
+    private void HandleDashboardOutput(string output)
     {
-        if (Options.Runner.PipeOutput)
-        {
-            _logger.LogInformation(output);
-        }
-
         if (Options.Frontend.AuthMode is FrontendAuthMode.BrowserToken && output.Contains(DashboardStartedConsoleMessage, StringComparison.OrdinalIgnoreCase))
         {
             // Wait for the authentication token to be printed
@@ -209,46 +195,6 @@ public partial class Dashboard : IDashboard
         }
     }
 
-    private void ErrorHandler(string error)
-    {
-        // To avoid spamming the otel logs with partial errors, we need to combine the error lines into a single error message and then log it
-        // This approach will combine the error lines as they're piped from the process, and then log them after a delay
-        // If the error line starts with a space, it's considered a continuation of the previous error line
-        // otherwise the previous error is logged and the new error will start to be collected
-
-        HasErrors = true;
-        _lastError ??= new StringBuilder();
-
-        if (error.StartsWith(' ') || error.Length == 0)
-        {
-            _lastError.AppendLine(error);
-            ResetErrorLogDelay();
-            return;
-        }
-
-        // Log the previous error before collecting the new one
-        LogDashboardError(_lastError.ToString());
-
-        _lastError.Clear();
-        _lastError.AppendLine(error);
-        ResetErrorLogDelay();
-    }
-
-    private void ResetErrorLogDelay()
-    {
-        var currentTime = _lastErrorTime = DateTimeOffset.Now;
-        Task.Delay(DefaultErrorLogDelay).ContinueWith(_ =>
-        {
-            if (_lastError is null or { Length: 0 } || _lastErrorTime == null || _lastErrorTime != currentTime)
-            {
-                return;
-            }
-
-            LogDashboardError(_lastError.ToString());
-            _lastError.Clear();
-        });
-    }
-
     private Task LaunchBrowserAsync(string url)
     {
         try
@@ -269,6 +215,15 @@ public partial class Dashboard : IDashboard
         }
 
         return Task.CompletedTask;
+    }
+
+    private void ClearInstanceState()
+    {
+        Url = null;
+        HasErrors = false;
+        OtlpEndpoints = null;
+        _lastOutput = null;
+        _lastOutputTime = null;
     }
 
     private void PersistInstance()

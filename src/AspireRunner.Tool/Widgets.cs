@@ -1,4 +1,5 @@
-﻿using Spectre.Console.Rendering;
+﻿using Microsoft.Extensions.Logging;
+using Spectre.Console.Rendering;
 
 namespace AspireRunner.Tool;
 
@@ -29,12 +30,12 @@ public static partial class Widgets
 
     public static Renderable Header()
     {
-        return AnsiConsole.Profile.Height <= 15 || AnsiConsole.Profile.Width <= 90 ? SmallHeader : LargeHeader;
+        return AnsiConsole.Profile.Height <= 17 || AnsiConsole.Profile.Width <= 90 ? SmallHeader : LargeHeader;
     }
 
     public static Renderable Error(string error)
     {
-        return new Markup($"\n[red][bold][[Error]][/] {error}[/]\n");
+        return new Markup($"\n[red bold]Error[/] {error}\n");
     }
 
     public static Renderable SuccessCheck()
@@ -50,7 +51,19 @@ public static partial class Widgets
     public static Renderable ErrorWidget(this Exception ex)
     {
         var message = ex.InnerException is not null ? ex.InnerException.Message : ex.Message;
-        return new Markup($"[red][bold][[Error]][/] {message}[/]");
+        return new Markup($"[red bold]Error[/] {message}");
+    }
+
+    public static IRenderable LogRecord(LogRecord logRecord)
+    {
+        var color = logRecord.Level switch
+        {
+            LogLevel.Error or LogLevel.Critical => Color.Red,
+            LogLevel.Warning => Color.Yellow,
+            _ => DefaultColor
+        };
+
+        return Markup.FromInterpolated($"[{color.ToMarkup()} bold]{logRecord.Level}[/] {logRecord.Message.Trim()}");
     }
 
     public static Renderable Widget(this string text)

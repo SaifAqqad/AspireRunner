@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
+﻿using AspireRunner.Installer;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Spectre.Console.Rendering;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -74,15 +76,21 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         [CommandOption("--auto-update")]
         [Description("Automatically update the dashboard to the latest version, Enabled by default")]
         public bool? AutoUpdate { get; set; }
+
+        [CommandOption("--verbose")]
+        [Description("Enable verbose logging")]
+        public bool? Verbose { get; set; }
     }
 
     private Dashboard? _dashboard;
     private bool _dashboardStarted;
+    private LogRecord[] _currentLog = [];
     private int _currentWidth = AnsiConsole.Profile.Width;
     private int _currentHeight = AnsiConsole.Profile.Height;
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
+        Logger.Verbose = settings.Verbose ?? false;
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
 
@@ -90,13 +98,26 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         var dashboardOptions = BuildOptions(settings);
         var otlpEndpoints = GetEnabledEndpoints(dashboardOptions);
 
+        if (dashboardOptions.Runner.AutoUpdate)
+        {
+            var installer = new DashboardInstaller(Logger.DefaultFactory.CreateLogger<DashboardInstaller>());
+
+            Widgets.Write("Checking for updates ");
+            var result = await installer.EnsureLatestAsync().ShowSpinner();
+            Widgets.Write(Widgets.SuccessCheck(), true);
+
+            if (result.Installed != result.Latest)
+            {
+                Widgets.Write([$"Dashboard updated to version {result.Latest} ".Widget(), Widgets.SuccessCheck()], true);
+            }
+        }
+
         // Register runner signal handlers
-        void StopHandler(PosixSignalContext _) => _dashboard?.StopAsync().Wait();
-        using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, StopHandler);
-        using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, StopHandler);
+        using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, SignalHandler);
+        using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, SignalHandler);
 
         // Create and start the dashboard
-        var dashboardFactory = new DashboardFactory(new NullLogger<DashboardFactory>(), new NullLoggerFactory());
+        var dashboardFactory = new DashboardFactory(Logger.DefaultFactory.CreateLogger<DashboardFactory>(), Logger.DefaultFactory);
         _dashboard = await dashboardFactory.CreateDashboardAsync(dashboardOptions);
         if (_dashboard is null)
         {
@@ -150,7 +171,8 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         var mainLayout = new Layout("main").SplitRows(
             new Layout("header", new Align(new Rows(Widgets.Header(), Widgets.RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(5),
-            new Layout("table", new Align(table, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(6),
+            new Layout("log", BuildLogPanel().Panel).Ratio(5),
+            new Layout("table", new Align(table, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(4),
             new Layout("prompt", new Align(actions, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(1)
         );
 
@@ -159,13 +181,12 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         // Re-render the static layout
         mainLayout.Render();
-        var lastRenderTime = DateTimeOffset.UtcNow;
 
         while (true)
         {
             if (CheckDashboardStatusChanged()
                 | CheckConsoleSizeChanged()
-                | CheckRenderTimeout())
+                | CheckLogEntries())
             {
                 mainLayout.Render();
             }
@@ -210,6 +231,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     case ConsoleKey.Escape:
                     {
                         await StopDashboardAsync();
+                        AnsiConsole.Cursor.Show();
                         return 0;
                     }
                     case ConsoleKey.S:
@@ -267,6 +289,9 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         {
             await _dashboard.StopAsync();
 
+            _currentLog = [];
+            mainLayout["log"].Update(BuildLogPanel().Panel);
+
             _dashboardStarted = false;
             table.UpdateCell(0, 0, defaultStatus);
             table.UpdateCell(0, 1, defaultStatus);
@@ -314,20 +339,55 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             _currentWidth = AnsiConsole.Profile.Width;
             _currentHeight = AnsiConsole.Profile.Height;
             mainLayout["header"].Update(new Align(new Rows(Widgets.Header(), Widgets.RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top));
+            mainLayout["log"].Update(BuildLogPanel().Panel);
 
             return true;
         }
 
-        bool CheckRenderTimeout()
+        bool CheckLogEntries()
         {
-            if (DateTimeOffset.UtcNow - lastRenderTime > TimeSpan.FromSeconds(5))
+            var (newPanel, logUpdated) = BuildLogPanel();
+            if (logUpdated)
             {
-                lastRenderTime = DateTimeOffset.UtcNow;
-                return true;
+                mainLayout["log"].Update(newPanel);
             }
 
-            return false;
+            return logUpdated;
         }
+
+        void SignalHandler(PosixSignalContext _)
+        {
+            AnsiConsole.Cursor.Show();
+            _dashboard?.StopAsync().Wait();
+        }
+    }
+
+    private (IRenderable Panel, bool LogUpdated) BuildLogPanel()
+    {
+        const int lineCount = 10;
+        var newLogs = Logger.Read("AspireRunner.Core.Dashboard", lineCount);
+
+        _currentLog = _currentLog.Concat(newLogs)
+            .TakeLast(lineCount)
+            .ToArray();
+
+        if (_currentLog.Length == 0)
+        {
+            return (new Text(""), false);
+        }
+
+        var visibleLines = Math.Max(AnsiConsole.Profile.Height - 15, 1);
+        return (
+            Panel: new Align(
+                new Panel(
+                    new Rows(
+                        _currentLog.TakeLast(visibleLines).Select(Widgets.LogRecord)
+                    )
+                ).NoBorder().Collapse(),
+                HorizontalAlignment.Left, VerticalAlignment.Middle
+            ),
+            LogUpdated: newLogs.Length > 0
+        );
     }
 
     private static DashboardOptions BuildOptions(Settings args)
@@ -353,6 +413,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             Runner = new RunnerOptions
             {
                 PreferredVersion = args.Version,
+                PipeOutput = args.Verbose ?? false,
                 LaunchBrowser = args.LaunchBrowser,
                 AutoUpdate = args.AutoUpdate ?? true,
                 SingleInstanceHandling = args.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
