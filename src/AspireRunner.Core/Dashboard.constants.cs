@@ -14,7 +14,7 @@ public partial class Dashboard
 
     public const string InstanceFile = "aspire-dashboard.instance";
 
-    private const int DefaultErrorLogDelay = 2000;
+    private const int DefaultLogDelay = 500;
 
     private const int InstanceLockTimeout = 30;
 
