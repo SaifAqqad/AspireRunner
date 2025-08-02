@@ -1,8 +1,10 @@
 ﻿using AspireRunner.Tool;
 using AspireRunner.Tool.Commands;
+using System.Text;
 
 // Ensure console is using UTF-8 encoding
-Console.OutputEncoding = System.Text.Encoding.UTF8;
+Console.OutputEncoding = Encoding.UTF8;
+
 var app = new CommandApp();
 
 app.Configure(config =>
@@ -11,6 +13,7 @@ app.Configure(config =>
     config.SetApplicationVersion(RunnerInfo.Version.ToString());
     config.SetExceptionHandler((ex, _) =>
     {
+        AnsiConsole.Cursor.Show();
         AnsiConsole.Write(Widgets.Error(ex.Message));
 
 #if DEBUG

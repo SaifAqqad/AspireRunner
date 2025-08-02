@@ -44,6 +44,7 @@ OPTIONS:
         --hostname                      The hostname used for the dashboard and OTLP server, 'localhost' by default
     -m, --multiple                      Allow running multiple instances of the dashboard, if not passed, existing instances will be replaced
         --auto-update                   Automatically update the dashboard to the latest version, Enabled by default
+        --verbose                       Enable verbose logging
 ```
 
 ### Install command
