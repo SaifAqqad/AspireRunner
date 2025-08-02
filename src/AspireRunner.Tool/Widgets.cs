@@ -35,7 +35,7 @@ public static partial class Widgets
 
     public static Renderable Error(string error)
     {
-        return new Markup($"\n[red][bold][[Error]][/] {error}[/]\n");
+        return new Markup($"\n[red bold]Error[/] {error}\n");
     }
 
     public static Renderable SuccessCheck()
@@ -51,7 +51,7 @@ public static partial class Widgets
     public static Renderable ErrorWidget(this Exception ex)
     {
         var message = ex.InnerException is not null ? ex.InnerException.Message : ex.Message;
-        return new Markup($"[red][bold][[Error]][/] {message}[/]");
+        return new Markup($"[red bold]Error[/] {message}");
     }
 
     public static IRenderable LogRecord(LogRecord logRecord)
