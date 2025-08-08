@@ -59,8 +59,18 @@ public partial class Widgets
         return spinnerInternal;
     }
 
+    public static string Truncate(this string text, int maxWidth)
+    {
+        if (text.Length > maxWidth)
+        {
+            text = $"{text[..(maxWidth - 2)]}...";
+        }
+
+        return text;
+    }
+
     public static bool IsConsoleSmall()
     {
-        return AnsiConsole.Profile.Height <= 17 || AnsiConsole.Profile.Width <= 90;
+        return AnsiConsole.Profile.Height <= 20 || AnsiConsole.Profile.Width <= 90;
     }
 }

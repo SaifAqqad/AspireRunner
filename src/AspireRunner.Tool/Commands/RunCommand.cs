@@ -158,11 +158,15 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         // Prepare the main layout
         var defaultStatus = Widgets.StatusSymbol(false);
         var table = new Table()
+            .Collapse()
             .BorderStyle(new Style(Widgets.PrimaryColor, decoration: Decoration.Dim))
-            .AddColumn("Dashboard", c => c.Centered().Width(40).NoWrap())
-            .AddColumn("OTLP/gRPC", c => c.Centered().Width(40).NoWrap())
-            .AddColumn("OTLP/HTTP", c => c.Centered().Width(40).NoWrap())
-            .AddRow(defaultStatus, defaultStatus, defaultStatus);
+            .AddColumn("", c => c.Centered().Width(15).NoWrap())
+            .AddColumn("Status", c => c.Centered().Width(15))
+            .AddColumn("Port", c => c.Centered().Width(15))
+            .AddColumn("Authentication", c => c.Centered().Width(35).NoWrap())
+            .AddRow("Dashboard".Widget(), defaultStatus)
+            .AddRow("OTLP/gRPC".Widget(), defaultStatus)
+            .AddRow("OTLP/HTTP".Widget(), defaultStatus);
 
         var actions = new Columns(
             Widgets.KeyActionDescriptor("S", "Stop"),
@@ -183,7 +187,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         var mainLayout = new Layout("main").SplitRows(
             new Layout("header", new Align(new Rows(header, Widgets.RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(headerRatio),
             new Layout("log", BuildLogPanel().Panel).Ratio(5),
-            new Layout("table", new Align(table, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(4),
+            new Layout("table", new Align(table, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(6),
             new Layout("prompt", new Align(actions, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(1)
         );
 
@@ -304,38 +308,74 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             mainLayout["log"].Update(BuildLogPanel().Panel);
 
             _dashboardStarted = false;
-            table.UpdateCell(0, 0, defaultStatus);
-            table.UpdateCell(0, 1, defaultStatus);
-            table.UpdateCell(0, 2, defaultStatus);
+            ResetTableCells();
+
             mainLayout.Render();
         }
 
         void UpdateTableCells(Renderable defaultContent)
         {
-            var maxWidth = int.Min((AnsiConsole.Profile.Width - 18) / 3, 35);
-
-            table.UpdateCell(0, 0, _dashboard.Url is null ? defaultContent : Widgets.TableColumn([
-                Widgets.StatusSymbol(true),
-                Widgets.Link(_dashboard.Url, maxWidth: maxWidth)
-            ], HorizontalAlignment.Center));
-
-            if (otlpEndpoints.Contains("grpc"))
+            if (_dashboard.Url is null)
             {
-                var grpcEndpoint = _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase));
-                table.UpdateCell(0, 1, grpcEndpoint is null ? defaultContent : Widgets.TableColumn([
-                    Widgets.StatusSymbol(true),
-                    Widgets.Link(grpcEndpoint.Value.Url, maxWidth: maxWidth)
-                ], HorizontalAlignment.Center));
+                table.UpdateCell(0, 1, defaultContent);
+                table.UpdateCell(0, 2, "");
+                table.UpdateCell(0, 3, "");
+            }
+            else
+            {
+                table.UpdateCell(0, 1, Widgets.TableColumn([Widgets.StatusSymbol(true)], HorizontalAlignment.Center));
+                table.UpdateCell(0, 2, Widgets.TableColumn([$"[{Widgets.PrimaryColorText} link={_dashboard.Url}]{settings.DashboardPort}[/]".Widget()], HorizontalAlignment.Center));
+                if (settings.UseAuth)
+                {
+                    var token = UrlHelper.GetQuery(_dashboard.Url)["t"].Truncate(30);
+                    table.UpdateCell(0, 3, Widgets.TableColumn([$"[{Widgets.PrimaryColorText}]{token}[/]".Widget()], HorizontalAlignment.Center));
+                }
             }
 
-            if (otlpEndpoints.Contains("http"))
+            if (!otlpEndpoints.Contains("grpc") || _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase)) is null)
             {
-                var httpEndpoint = _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase));
-                table.UpdateCell(0, 2, httpEndpoint is null ? defaultContent : Widgets.TableColumn([
-                    Widgets.StatusSymbol(true),
-                    Widgets.Link(httpEndpoint.Value.Url, maxWidth: maxWidth)
-                ], HorizontalAlignment.Center));
+                table.UpdateCell(1, 1, defaultContent);
+                table.UpdateCell(1, 2, "");
+                table.UpdateCell(1, 3, "");
             }
+            else
+            {
+                table.UpdateCell(1, 1, Widgets.TableColumn([Widgets.StatusSymbol(true)], HorizontalAlignment.Center));
+                table.UpdateCell(1, 2, Widgets.TableColumn([$"[{Widgets.PrimaryColorText}]{settings.OtlpPort}[/]".Widget()], HorizontalAlignment.Center));
+                if (!string.IsNullOrWhiteSpace(settings.OtlpKey))
+                {
+                    table.UpdateCell(1, 3, Widgets.TableColumn([$"x-otlp-api-key=[{Widgets.PrimaryColorText}]{settings.OtlpKey.Truncate(18)}[/]".Widget()], HorizontalAlignment.Center));
+                }
+            }
+
+            if (!otlpEndpoints.Contains("http") || _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase)) is null)
+            {
+                table.UpdateCell(2, 1, defaultContent);
+                table.UpdateCell(2, 2, "");
+                table.UpdateCell(2, 3, "");
+            }
+            else
+            {
+                table.UpdateCell(1, 1, Widgets.TableColumn([Widgets.StatusSymbol(true)], HorizontalAlignment.Center));
+                table.UpdateCell(1, 2, Widgets.TableColumn([$"[{Widgets.PrimaryColorText}]{settings.OtlpHttpPort}[/]".Widget()], HorizontalAlignment.Center));
+                if (!string.IsNullOrWhiteSpace(settings.OtlpKey))
+                {
+                    table.UpdateCell(1, 3, Widgets.TableColumn([$"x-otlp-api-key=[{Widgets.PrimaryColorText}]{settings.OtlpKey.Truncate(18)}[/]".Widget()], HorizontalAlignment.Center));
+                }
+            }
+        }
+
+        void ResetTableCells()
+        {
+            table.UpdateCell(0, 1, defaultStatus);
+            table.UpdateCell(0, 2, "");
+            table.UpdateCell(0, 3, "");
+            table.UpdateCell(1, 1, defaultStatus);
+            table.UpdateCell(1, 2, "");
+            table.UpdateCell(1, 3, "");
+            table.UpdateCell(2, 1, defaultStatus);
+            table.UpdateCell(2, 2, "");
+            table.UpdateCell(2, 3, "");
         }
 
         bool CheckDashboardStatusChanged()
@@ -346,9 +386,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             }
 
             _dashboardStarted = false;
-            table.UpdateCell(0, 0, defaultStatus);
-            table.UpdateCell(0, 1, defaultStatus);
-            table.UpdateCell(0, 2, defaultStatus);
+            ResetTableCells();
             return true;
         }
 
