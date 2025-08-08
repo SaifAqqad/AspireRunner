@@ -1,6 +1,5 @@
 ﻿using AspireRunner.Installer;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Spectre.Console.Rendering;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -142,7 +141,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             return 2;
         }
 
-        Widgets.WriteInterpolated($"Found dashboard version [{Widgets.DefaultColorText}]{_dashboard.Version}[/] at {_dashboard.InstallationPath}", true);
+        Widgets.WriteInterpolated($"Found dashboard version [{Widgets.PrimaryColorText}]{_dashboard.Version}[/] at {_dashboard.InstallationPath}", true);
 
         await _dashboard.StartAsync(CancellationToken.None);
         _dashboardStarted = _dashboard.IsRunning;
@@ -155,10 +154,10 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         // Prepare the main layout
         var defaultStatus = Widgets.StatusSymbol(false);
         var table = new Table()
-            .BorderStyle(new Style(Widgets.DefaultColor, decoration: Decoration.Dim))
-            .AddColumn("Dashboard", c => c.Centered().Width(30))
-            .AddColumn("OTLP/gRPC", c => c.Centered().Width(30))
-            .AddColumn("OTLP/HTTP", c => c.Centered().Width(30))
+            .BorderStyle(new Style(Widgets.PrimaryColor, decoration: Decoration.Dim))
+            .AddColumn("Dashboard", c => c.Centered().Width(40).NoWrap())
+            .AddColumn("OTLP/gRPC", c => c.Centered().Width(40).NoWrap())
+            .AddColumn("OTLP/HTTP", c => c.Centered().Width(40).NoWrap())
             .AddRow(defaultStatus, defaultStatus, defaultStatus);
 
         var actions = new Columns(
@@ -169,8 +168,16 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             Widgets.KeyActionDescriptor("Esc", "Exit")
         ).Collapse().PadRight(3);
 
+        var headerRatio = 5;
+        var header = Widgets.LargeHeader;
+        if (Widgets.IsConsoleSmall())
+        {
+            headerRatio = 2;
+            header = Widgets.SmallHeader;
+        }
+
         var mainLayout = new Layout("main").SplitRows(
-            new Layout("header", new Align(new Rows(Widgets.Header(), Widgets.RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(5),
+            new Layout("header", new Align(new Rows(header, Widgets.RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(headerRatio),
             new Layout("log", BuildLogPanel().Panel).Ratio(5),
             new Layout("table", new Align(table, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(4),
             new Layout("prompt", new Align(actions, HorizontalAlignment.Left, VerticalAlignment.Bottom)).Ratio(1)
@@ -260,7 +267,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
                     while (_dashboard.IsRunning)
                     {
-                        var currentFrame = new Markup(spinner.Frames[frameIndex % spinner.Frames.Count], Widgets.DefaultColor);
+                        var currentFrame = new Markup(spinner.Frames[frameIndex % spinner.Frames.Count], Widgets.PrimaryColor);
                         var currentPrompt = new Align(
                             new Columns(currentFrame, new Text("Waiting for dashboard startup")).Collapse(),
                             HorizontalAlignment.Left,
@@ -301,17 +308,29 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         void UpdateTableCells(Renderable defaultContent)
         {
-            table.UpdateCell(0, 0, _dashboard.Url is null ? defaultContent : new Columns(Widgets.StatusSymbol(true), Markup.FromInterpolated($"[link]{_dashboard.Url}[/]")));
+            var maxWidth = int.Min((AnsiConsole.Profile.Width - 18) / 3, 35);
+
+            table.UpdateCell(0, 0, _dashboard.Url is null ? defaultContent : Widgets.TableColumn([
+                Widgets.StatusSymbol(true),
+                Widgets.Link(_dashboard.Url, maxWidth: maxWidth)
+            ], HorizontalAlignment.Center));
+
             if (otlpEndpoints.Contains("grpc"))
             {
                 var grpcEndpoint = _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("grpc", StringComparison.OrdinalIgnoreCase));
-                table.UpdateCell(0, 1, grpcEndpoint is null ? defaultContent : new Columns(Widgets.StatusSymbol(true), Markup.FromInterpolated($"[link]{grpcEndpoint.Value.Url}[/]")));
+                table.UpdateCell(0, 1, grpcEndpoint is null ? defaultContent : Widgets.TableColumn([
+                    Widgets.StatusSymbol(true),
+                    Widgets.Link(grpcEndpoint.Value.Url, maxWidth: maxWidth)
+                ], HorizontalAlignment.Center));
             }
 
             if (otlpEndpoints.Contains("http"))
             {
                 var httpEndpoint = _dashboard.OtlpEndpoints?.FirstOrDefault(e => e.Protocol.Contains("http", StringComparison.OrdinalIgnoreCase));
-                table.UpdateCell(0, 2, httpEndpoint is null ? defaultContent : new Columns(Widgets.StatusSymbol(true), Markup.FromInterpolated($"[link]{httpEndpoint.Value.Url}[/]")));
+                table.UpdateCell(0, 2, httpEndpoint is null ? defaultContent : Widgets.TableColumn([
+                    Widgets.StatusSymbol(true),
+                    Widgets.Link(httpEndpoint.Value.Url, maxWidth: maxWidth)
+                ], HorizontalAlignment.Center));
             }
         }
 
@@ -338,8 +357,18 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
             _currentWidth = AnsiConsole.Profile.Width;
             _currentHeight = AnsiConsole.Profile.Height;
-            mainLayout["header"].Update(new Align(new Rows(Widgets.Header(), Widgets.RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top));
+
+            headerRatio = 5;
+            header = Widgets.LargeHeader;
+            if (Widgets.IsConsoleSmall())
+            {
+                headerRatio = 2;
+                header = Widgets.SmallHeader;
+            }
+
+            mainLayout["header"].Update(new Align(new Rows(header, Widgets.RunnerVersion).Collapse(), HorizontalAlignment.Left, VerticalAlignment.Top)).Ratio(headerRatio);
             mainLayout["log"].Update(BuildLogPanel().Panel);
+            UpdateTableCells(defaultStatus);
 
             return true;
         }
@@ -376,14 +405,13 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             return (new Text(""), false);
         }
 
-        var visibleLines = Math.Max(AnsiConsole.Profile.Height - 15, 1);
+        var contentSize = Widgets.IsConsoleSmall() ? 10 : 15;
+        var visibleLines = Math.Max(AnsiConsole.Profile.Height - contentSize, 1);
         return (
             Panel: new Align(
-                new Panel(
-                    new Rows(
-                        _currentLog.TakeLast(visibleLines).Select(Widgets.LogRecord)
-                    )
-                ).NoBorder().Collapse(),
+                new Rows(
+                    _currentLog.TakeLast(visibleLines).Select(Widgets.LogRecord)
+                ),
                 HorizontalAlignment.Left, VerticalAlignment.Middle
             ),
             LogUpdated: newLogs.Length > 0

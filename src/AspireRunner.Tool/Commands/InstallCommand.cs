@@ -38,7 +38,7 @@ public class InstallCommand : AsyncCommand<InstallCommand.Settings>
             return 0;
         }
 
-        Widgets.WriteInterpolated($"Found [{Widgets.DefaultColorText}]{availableVersions.Length}[/] versions", true);
+        Widgets.WriteInterpolated($"Found [{Widgets.PrimaryColorText}]{availableVersions.Length}[/] versions", true);
         if (settings.Version?.ToLowerInvariant() is "latest")
         {
             return await InstallVersionAsync(availableVersions.First()) ? 0 : -99;
@@ -71,7 +71,7 @@ public class InstallCommand : AsyncCommand<InstallCommand.Settings>
         var selected = await AnsiConsole.PromptAsync(
             new SelectionPrompt<string>()
                 .EnableSearch()
-                .HighlightStyle(Widgets.DefaultColor)
+                .HighlightStyle(Widgets.PrimaryColor)
                 .Title("Which version do you want to install?")
                 .AddChoices(versions.Select(v => v.ToString()))
         );
@@ -88,11 +88,11 @@ public class InstallCommand : AsyncCommand<InstallCommand.Settings>
             var installedVersions = Dashboard.GetInstalledVersions();
             if (installedVersions.Any(v => v == version))
             {
-                Widgets.Write([$"Version {version} is already installed ".Widget(), Widgets.SuccessCheck()]);
+                Widgets.Write([$"Version {version} is already installed ".Widget(), Widgets.SuccessCheck()], true);
                 return true;
             }
 
-            Widgets.WriteInterpolated($"Installing version [{Widgets.DefaultColorText}]{version}[/] ");
+            Widgets.WriteInterpolated($"Installing version [{Widgets.PrimaryColorText}]{version}[/] ");
             success = await _installer.InstallAsync(version, CancellationToken.None).ShowSpinner();
 
             Widgets.Write(success ? Widgets.SuccessCheck() : Widgets.ErrorCross());

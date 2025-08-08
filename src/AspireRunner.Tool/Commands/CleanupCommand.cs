@@ -11,7 +11,7 @@ public class CleanupCommand : AsyncCommand
         if (runningInstance.Dashboard.IsRunning())
         {
             Widgets.Write(Widgets.Error(
-                $"An instance of the dashboard is currently running (PID = [{Widgets.DefaultColorText}]{runningInstance.Dashboard.Id}[/]). Please stop it before attempting to cleanup"
+                $"An instance of the dashboard is currently running (PID = [{Widgets.PrimaryColorText}]{runningInstance.Dashboard.Id}[/]). Please stop it before attempting to cleanup"
             ));
 
             return -1;
@@ -20,7 +20,7 @@ public class CleanupCommand : AsyncCommand
         if (runningInstance.Runner.IsRunning())
         {
             Widgets.Write(Widgets.Error(
-                $"An instance of the runner is currently running (PID = [{Widgets.DefaultColorText}]{runningInstance.Runner.Id}[/]). Please stop it before attempting to cleanup"
+                $"An instance of the runner is currently running (PID = [{Widgets.PrimaryColorText}]{runningInstance.Runner.Id}[/]). Please stop it before attempting to cleanup"
             ));
 
             return -1;
@@ -43,7 +43,7 @@ public class CleanupCommand : AsyncCommand
         }
 
         var command = new UninstallCommand();
-        Widgets.WriteInterpolated($"Found [{Widgets.DefaultColorText}]{installedVersions.Length}[/] versions installed, keeping the latest ([{Widgets.DefaultColorText}]{installedVersions[0]}[/])", true);
+        Widgets.WriteInterpolated($"Found [{Widgets.PrimaryColorText}]{installedVersions.Length}[/] versions installed, keeping the latest ([{Widgets.PrimaryColorText}]{installedVersions[0]}[/])", true);
 
         foreach (var version in installedVersions.Skip(1))
         {
