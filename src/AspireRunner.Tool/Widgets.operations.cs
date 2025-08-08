@@ -49,7 +49,7 @@ public partial class Widgets
 
     public static async Task<T> ShowSpinner<T>(this Task<T> task, bool withResult = false)
     {
-        var spinnerInternal = (await task.Spinner(Spinner.Known.Dots, DefaultColor))!;
+        var spinnerInternal = (await task.Spinner(Spinner.Known.Dots, PrimaryColor))!;
         if (withResult)
         {
             AnsiConsole.Write(SuccessCheck());
@@ -57,5 +57,20 @@ public partial class Widgets
         }
 
         return spinnerInternal;
+    }
+
+    public static string Truncate(this string text, int maxWidth)
+    {
+        if (text.Length > maxWidth)
+        {
+            text = $"{text[..(maxWidth - 2)]}...";
+        }
+
+        return text;
+    }
+
+    public static bool IsConsoleSmall()
+    {
+        return AnsiConsole.Profile.Height <= 20 || AnsiConsole.Profile.Width <= 90;
     }
 }

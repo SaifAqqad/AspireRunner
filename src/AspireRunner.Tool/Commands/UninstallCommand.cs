@@ -25,7 +25,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
         if (runningInstance.Dashboard.IsRunning())
         {
             Widgets.Write(Widgets.Error(
-                $"An instance of the dashboard is currently running (PID = [{Widgets.DefaultColorText}]{runningInstance.Dashboard.Id}[/]). Please stop it before attempting to uninstall"
+                $"An instance of the dashboard is currently running (PID = [{Widgets.PrimaryColorText}]{runningInstance.Dashboard.Id}[/]). Please stop it before attempting to uninstall"
             ));
 
             return -1;
@@ -41,7 +41,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
         var success = true;
         if (settings.Version?.ToLowerInvariant() is "all" or "*")
         {
-            Widgets.WriteInterpolated($"Found [{Widgets.DefaultColorText}]{installedVersions.Length}[/] versions installed", true);
+            Widgets.WriteInterpolated($"Found [{Widgets.PrimaryColorText}]{installedVersions.Length}[/] versions installed", true);
 
             foreach (var version in installedVersions)
             {
@@ -88,7 +88,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
         var selected = await AnsiConsole.PromptAsync(
             new SelectionPrompt<string>()
                 .EnableSearch()
-                .HighlightStyle(Widgets.DefaultColor)
+                .HighlightStyle(Widgets.PrimaryColor)
                 .Title("Which version do you want to uninstall?")
                 .AddChoices(["All", ..versions.Select(v => v.ToString())])
         );
@@ -107,7 +107,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
 
         try
         {
-            Widgets.WriteInterpolated($"Uninstalling version [{Widgets.DefaultColorText}]{version}[/] ");
+            Widgets.WriteInterpolated($"Uninstalling version [{Widgets.PrimaryColorText}]{version}[/] ");
             success = await _installer.RemoveAsync(version, CancellationToken.None).ShowSpinner();
 
             Widgets.Write(success ? Widgets.SuccessCheck() : Widgets.ErrorCross());

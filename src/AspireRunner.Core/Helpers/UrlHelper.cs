@@ -23,4 +23,13 @@ public static class UrlHelper
             .Replace("0.0.0.0", ipv4)
             .Replace("[::]", ipv6);
     }
+
+    public static Dictionary<string, string> GetQuery(string url)
+    {
+        return url.IndexOf('?') is > -1 and var queryStart ?
+            url[(queryStart + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(q => q.Split('=', 2))
+                .ToDictionary(p => p[0], p => p[1])
+            : new Dictionary<string, string>();
+    }
 }

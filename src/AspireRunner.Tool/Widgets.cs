@@ -5,14 +5,15 @@ namespace AspireRunner.Tool;
 
 public static partial class Widgets
 {
-    public static Color DefaultColor => Color.SlateBlue1;
+    public static Color PrimaryColor => Color.SlateBlue1;
 
-    public static string DefaultColorText { get; } = DefaultColor.ToMarkup();
+    public static string PrimaryColorText { get; } = PrimaryColor.ToMarkup();
 
-    public static Renderable RunnerVersion { get; } = new Markup($"[{DefaultColorText} dim]v{RunnerInfo.Version}[/]");
+    public static Renderable RunnerVersion { get; } = new Markup($"[{PrimaryColorText} dim]v{RunnerInfo.Version}[/]");
 
-    private static readonly Renderable SmallHeader = Markup.FromInterpolated($"[{DefaultColorText}][link={RunnerInfo.ProjectUrl}]Aspire Runner[/][/]\n");
-    private static readonly Renderable LargeHeader = new FigletText("Aspire Runner").LeftJustified().Color(DefaultColor);
+    public static Renderable SmallHeader { get; } = Markup.FromInterpolated($"[{PrimaryColorText}][link={RunnerInfo.ProjectUrl}]Aspire Runner[/][/]\n");
+
+    public static Renderable LargeHeader { get; } = new FigletText("Aspire Runner").LeftJustified().Color(PrimaryColor);
 
     public static Renderable StatusSymbol(bool status)
     {
@@ -30,12 +31,26 @@ public static partial class Widgets
 
     public static Renderable Header()
     {
-        return AnsiConsole.Profile.Height <= 17 || AnsiConsole.Profile.Width <= 90 ? SmallHeader : LargeHeader;
+        return IsConsoleSmall() ? SmallHeader : LargeHeader;
     }
 
     public static Renderable Error(string error)
     {
         return new Markup($"\n[red bold]Error[/] {error}\n");
+    }
+
+    public static Renderable Link(string url, string? text = null, int? maxWidth = null)
+    {
+        var display = string.IsNullOrWhiteSpace(text) ? url : text;
+        if (maxWidth.HasValue)
+        {
+            if (display.Length > maxWidth.Value)
+            {
+                display = $"{display[..(maxWidth.Value - 2)]}...";
+            }
+        }
+
+        return Markup.FromInterpolated($"[link={url}]{display}[/]");
     }
 
     public static Renderable SuccessCheck()
@@ -56,18 +71,31 @@ public static partial class Widgets
 
     public static IRenderable LogRecord(LogRecord logRecord)
     {
-        var color = logRecord.Level switch
+        var (backgroundColor, textColor) = logRecord.Level switch
         {
-            LogLevel.Error or LogLevel.Critical => Color.Red,
-            LogLevel.Warning => Color.Yellow,
-            _ => DefaultColor
+            LogLevel.Error or LogLevel.Critical => (Color.Red, Color.Black),
+            LogLevel.Warning => (Color.Yellow, Color.Black),
+            _ => (Color.Default, PrimaryColor)
         };
 
-        return Markup.FromInterpolated($"[{color.ToMarkup()} bold]{logRecord.Level}[/] {logRecord.Message.Trim()}");
+        return Markup.FromInterpolated($"[{textColor.ToMarkup()} on {backgroundColor.ToMarkup()} bold] {logRecord.Level.ShortName()} [/] {logRecord.Message.Trim()}");
+    }
+
+    public static Renderable TableColumn(IRenderable[] content, HorizontalAlignment alignment = HorizontalAlignment.Left)
+    {
+        return new Align(new Columns(content).Collapse(), alignment);
     }
 
     public static Renderable Widget(this string text)
     {
         return new Markup(text);
     }
+
+    public static string ShortName(this LogLevel level) => level switch
+    {
+        LogLevel.Warning => "Warn",
+        LogLevel.Critical => "Crtcl",
+        LogLevel.Information => "Info",
+        _ => level.ToString()
+    };
 }
