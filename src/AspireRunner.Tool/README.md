@@ -5,6 +5,7 @@ A dotnet tool for downloading and running the standalone [Aspire Dashboard](http
 The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any application. However, the dotnet tool is specifically intended for use during local development and testing
 
 [![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.Tool?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.Tool)](https://www.nuget.org/packages/AspireRunner.Tool)
+     
 
 ## Installation
 
@@ -13,6 +14,8 @@ dotnet tool install -g AspireRunner.Tool
 ```
 
 ## Usage
+
+ <img width="650" height="374.31906614786" alt="Screenshot" src="https://github.com/user-attachments/assets/f7ee6ec9-f2de-4f4f-9bb6-b085f49e1109" />
 
 > [!NOTE]
 > By default, The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`),
