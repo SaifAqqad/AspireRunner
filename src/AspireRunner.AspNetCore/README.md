@@ -9,7 +9,7 @@ to be used for local development only.
 
 > [!IMPORTANT]
 > The package depends on the dashboard being pre-installed on the machine either using the dotnet tool or
-> the installer package. For more info, refer to the [installer package docs](../AspireRunner.Installer/README.md)
+> the installer package. For more info, refer to the [installer package docs](https://www.nuget.org/packages/AspireRunner.Installer)
 
 ### Example usage
 
