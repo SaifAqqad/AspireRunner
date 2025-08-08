@@ -31,7 +31,7 @@ public static partial class Widgets
 
     public static Renderable Header()
     {
-        return IsConsoleSmall() ? SmallHeader : LargeHeader;
+        return IsSmol() ? SmallHeader : LargeHeader;
     }
 
     public static Renderable Error(string error)

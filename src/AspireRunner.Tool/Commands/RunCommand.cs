@@ -178,7 +178,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         var headerRatio = 5;
         var header = Widgets.LargeHeader;
-        if (Widgets.IsConsoleSmall())
+        if (Widgets.IsSmol())
         {
             headerRatio = 2;
             header = Widgets.SmallHeader;
@@ -327,7 +327,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                 table.UpdateCell(0, 2, Widgets.TableColumn([$"[{Widgets.PrimaryColorText} link={_dashboard.Url}]{settings.DashboardPort}[/]".Widget()], HorizontalAlignment.Center));
                 if (settings.UseAuth)
                 {
-                    var token = UrlHelper.GetQuery(_dashboard.Url)["t"].Truncate(30);
+                    var token = UrlHelper.GetQuery(_dashboard.Url)["t"].Truncate(35);
                     table.UpdateCell(0, 3, Widgets.TableColumn([$"[{Widgets.PrimaryColorText}]{token}[/]".Widget()], HorizontalAlignment.Center));
                 }
             }
@@ -380,13 +380,24 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         bool CheckDashboardStatusChanged()
         {
-            if (_dashboard.IsRunning == _dashboardStarted)
+            var dashboardRunning = _dashboard.IsRunning;
+            if (dashboardRunning == _dashboardStarted)
             {
+                // status is unchanged
                 return false;
             }
 
-            _dashboardStarted = false;
-            ResetTableCells();
+            if (dashboardRunning)
+            {
+                _dashboardStarted = true;
+                UpdateTableCells(defaultStatus);
+            }
+            else
+            {
+                _dashboardStarted = false;
+                ResetTableCells();
+            }
+
             return true;
         }
 
@@ -402,7 +413,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
             headerRatio = 5;
             header = Widgets.LargeHeader;
-            if (Widgets.IsConsoleSmall())
+            if (Widgets.IsSmol())
             {
                 headerRatio = 2;
                 header = Widgets.SmallHeader;
@@ -435,7 +446,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
     private (IRenderable Panel, bool LogUpdated) BuildLogPanel()
     {
-        const int lineCount = 10;
+        const int lineCount = 15;
         var newLogs = Logger.Read("AspireRunner.Core.Dashboard", lineCount);
 
         _currentLog = _currentLog.Concat(newLogs)
@@ -447,14 +458,13 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             return (new Text(""), false);
         }
 
-        var contentSize = Widgets.IsConsoleSmall() ? 10 : 15;
+        var contentSize = Widgets.IsSmol() ? 10 : 15;
         var visibleLines = Math.Max(AnsiConsole.Profile.Height - contentSize, 1);
         return (
             Panel: new Align(
-                new Rows(
-                    _currentLog.TakeLast(visibleLines).Select(Widgets.LogRecord)
-                ),
-                HorizontalAlignment.Left, VerticalAlignment.Middle
+                new Rows(_currentLog.TakeLast(visibleLines).Select(Widgets.LogRecord)),
+                HorizontalAlignment.Left,
+                VerticalAlignment.Middle
             ),
             LogUpdated: newLogs.Length > 0
         );

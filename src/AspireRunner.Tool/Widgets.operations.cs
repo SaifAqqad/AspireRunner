@@ -69,7 +69,7 @@ public partial class Widgets
         return text;
     }
 
-    public static bool IsConsoleSmall()
+    public static bool IsSmol()
     {
         return AnsiConsole.Profile.Height <= 20 || AnsiConsole.Profile.Width <= 90;
     }
