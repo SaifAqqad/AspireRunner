@@ -1,0 +1,7 @@
+﻿<Project>
+    <PropertyGroup>
+        <IsStandaloneCli>true</IsStandaloneCli>
+    </PropertyGroup>
+
+    <Import Project="AspireRunner.Tool.csproj"/>
+</Project>

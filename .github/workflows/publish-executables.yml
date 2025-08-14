@@ -1,0 +1,70 @@
+﻿name: Publish Standalone Executables
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+env:
+  PROJECT_PATH: src/AspireRunner.Tool
+  PROJECT_FILE: AspireRunner.Tool.Standalone.csproj
+
+permissions:
+  contents: write
+
+# Shamefully lifted from the dotnet/aspire repo :P
+jobs:
+  publish:
+    name: Build CLI (${{ matrix.targets.os }})
+    runs-on: ${{ matrix.targets.os }}
+    strategy:
+      matrix:
+        targets:
+          - os: ubuntu-latest
+            rids: linux-x64
+          - os: windows-latest
+            rids: win-x64
+          - os: macos-latest
+            rids: osx-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x.x
+
+      - name: Publish
+        run: >
+          dotnet publish
+          -c Release
+          -f net9.0
+          -r ${{ matrix.targets.rids }}
+          -o ${{env.PROJECT_PATH}}/executable-dist/
+          /p:DebugType=None /p:DebugSymbols=false
+          ${{env.PROJECT_PATH}}/${{env.PROJECT_FILE}}
+
+      - name: Rename output
+        shell: pwsh
+        run: Get-ChildItem -File ${{env.PROJECT_PATH}}/executable-dist/* | Rename-Item -NewName 'aspire-dashboard'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.targets.rids }}-executables
+          path: ${{env.PROJECT_PATH}}/executable-dist/*
+
+      - name: Compress output
+        shell: pwsh
+        run: >
+          Compress-Archive 
+          -Path ${{env.PROJECT_PATH}}/executable-dist/*
+          -DestinationPath ./aspire-dashboard-${{matrix.targets.rids}}.zip
+
+      - uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{env.PROJECT_PATH}}/executable-dist/*.zip
