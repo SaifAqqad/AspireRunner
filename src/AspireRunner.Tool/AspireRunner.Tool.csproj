@@ -4,18 +4,30 @@
         <Version>2.0.2</Version>
         <OutputType>Exe</OutputType>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
-        <RuntimeIdentifiers>win;osx;linux</RuntimeIdentifiers>
         <langversion>latest</langversion>
 
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>AspireRunner.Tool</RootNamespace>
         <InvariantGlobalization>true</InvariantGlobalization>
+    </PropertyGroup>
 
-        <PackAsTool>true</PackAsTool>
-        <ToolCommandName>aspire-dashboard</ToolCommandName>
+    <PropertyGroup Condition="'$(IsStandaloneCli)' == 'true'">
+        <RuntimeIdentifiers>win-x86;win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+        <PublishSingleFile>true</PublishSingleFile>
+        <PublishReadyToRun>true</PublishReadyToRun>
+        <SelfContained>false</SelfContained>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(IsStandaloneCli)' != 'true'">
+        <RuntimeIdentifiers>win;osx;linux</RuntimeIdentifiers>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageOutputPath>../../dist</PackageOutputPath>
+        <IsPackable>true</IsPackable>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>aspire-dashboard</ToolCommandName>
+        <RollForward>Major</RollForward>
         <Authors>SaifAqqad</Authors>
         <Description>A runner for the dotnet Aspire Dashboard</Description>
         <PackageProjectUrl>https://github.com/SaifAqqad/AspireRunner</PackageProjectUrl>
@@ -36,7 +48,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7"/>
         <PackageReference Include="Spectre.Console" Version="0.50.0"/>
         <PackageReference Include="Spectre.Console.Analyzer" Version="1.0.0">
             <PrivateAssets>all</PrivateAssets>
