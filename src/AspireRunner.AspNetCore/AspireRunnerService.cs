@@ -12,18 +12,22 @@ public partial class AspireRunnerService(
 {
     private Dashboard? _aspireDashboard;
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
-        try
+        // Avoid blocking the startup process
+        _ = Task.Factory.StartNew(async () =>
         {
-            // Avoid blocking the startup process
-            await Task.Yield();
-            await InitializeDashboard(cancellationToken);
-        }
-        catch (Exception e)
-        {
-            LogServiceError(e.Message);
-        }
+            try
+            {
+                await InitializeDashboard(cancellationToken);
+            }
+            catch (Exception e)
+            {
+                LogServiceError(e.Message);
+            }
+        }, TaskCreationOptions.LongRunning);
+
+        return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
