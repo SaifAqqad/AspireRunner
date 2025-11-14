@@ -20,7 +20,7 @@ public class InstallCommand : AsyncCommand<InstallCommand.Settings>
 
     private readonly IDashboardInstaller _installer = new DashboardInstaller(NullLogger<DashboardInstaller>.Instance);
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         if (context.Name is "install")
         {
@@ -29,7 +29,7 @@ public class InstallCommand : AsyncCommand<InstallCommand.Settings>
         }
 
         Widgets.Write("Fetching available versions ");
-        var availableVersions = await _installer.GetAvailableVersionsAsync(settings.IncludePrerelease)
+        var availableVersions = await _installer.GetAvailableVersionsAsync(settings.IncludePrerelease, cancellationToken)
             .ShowSpinner(withResult: true);
 
         if (availableVersions.Length is 0)

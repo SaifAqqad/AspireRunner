@@ -2,7 +2,7 @@
 
 public class CleanupCommand : AsyncCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context)
+    public override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
@@ -47,7 +47,7 @@ public class CleanupCommand : AsyncCommand
 
         foreach (var version in installedVersions.Skip(1))
         {
-            await command.UninstallVersionAsync(version);
+            await command.UninstallVersionAsync(version, cancellationToken);
         }
 
         return 0;

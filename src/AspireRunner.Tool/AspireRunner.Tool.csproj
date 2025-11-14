@@ -3,7 +3,7 @@
     <PropertyGroup>
         <Version>2.0.2</Version>
         <OutputType>Exe</OutputType>
-        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <langversion>latest</langversion>
 
         <Nullable>enable</Nullable>
@@ -16,14 +16,14 @@
         <RuntimeIdentifiers>win-x86;win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
         <PublishSingleFile>true</PublishSingleFile>
         <PublishReadyToRun>true</PublishReadyToRun>
-        <SelfContained>false</SelfContained>
+        <SelfContained>true</SelfContained>
         <OutputType>Exe</OutputType>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(IsStandaloneCli)' != 'true'">
         <RuntimeIdentifiers>win;osx;linux</RuntimeIdentifiers>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageOutputPath>../../dist</PackageOutputPath>
+        <PackageOutputPath>../../dist/nupkg</PackageOutputPath>
         <IsPackable>true</IsPackable>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>aspire-dashboard</ToolCommandName>
@@ -48,13 +48,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7"/>
-        <PackageReference Include="Spectre.Console" Version="0.50.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+        <PackageReference Include="Spectre.Console" Version="0.54.0" />
         <PackageReference Include="Spectre.Console.Analyzer" Version="1.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Spectre.Console.Cli" Version="0.50.0"/>
+        <PackageReference Include="Spectre.Console.Cli" Version="0.53.0" />
     </ItemGroup>
 
     <PropertyGroup>

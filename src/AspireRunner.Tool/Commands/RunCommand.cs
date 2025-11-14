@@ -91,7 +91,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
     private int _currentWidth = AnsiConsole.Profile.Width;
     private int _currentHeight = AnsiConsole.Profile.Height;
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         Logger.Verbose = settings.Verbose ?? false;
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
@@ -106,7 +106,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             var installer = new DashboardInstaller(Logger.DefaultFactory.CreateLogger<DashboardInstaller>());
 
             Widgets.Write("Checking for updates ");
-            var result = await installer.EnsureLatestAsync().ShowSpinner();
+            var result = await installer.EnsureLatestAsync(cancellationToken).ShowSpinner();
             Widgets.Write(Widgets.SuccessCheck(), true);
 
             if (result.Installed != result.Latest)
@@ -125,7 +125,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         if (_dashboard is null)
         {
             Widgets.Write("No dashboards found. Installing the latest version...", true);
-            var installationResult = await new InstallCommand().ExecuteAsync(context, new() { Version = "latest" });
+            var installationResult = await new InstallCommand().ExecuteAsync(context, new() { Version = "latest" }, cancellationToken);
             if (installationResult is not 0)
             {
                 return installationResult;
@@ -215,7 +215,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     {
                         await StopDashboardAsync();
 
-                        await _dashboard.StartAsync();
+                        await _dashboard.StartAsync(cancellationToken);
 
                         // Avoid launching the browser when restarting the dashboard
                         dashboardOptions.Runner.LaunchBrowser = false;
@@ -257,7 +257,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                 }
             }
 
-            await Task.Delay(5).ConfigureAwait(false);
+            await Task.Delay(5, cancellationToken).ConfigureAwait(false);
         }
 
         async Task RenderLiveInitializationAsync()
@@ -292,7 +292,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                         }
 
                         frameIndex++;
-                        await Task.Delay(spinner.Interval);
+                        await Task.Delay(spinner.Interval, cancellationToken);
                     }
                 });
 
@@ -302,7 +302,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         async Task StopDashboardAsync()
         {
-            await _dashboard.StopAsync();
+            await _dashboard.StopAsync(cancellationToken);
 
             _currentLog = [];
             mainLayout["log"].Update(BuildLogPanel().Panel);
@@ -440,7 +440,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         void SignalHandler(PosixSignalContext _)
         {
             AnsiConsole.Cursor.Show();
-            _dashboard?.StopAsync().Wait();
+            _dashboard?.StopAsync(cancellationToken).Wait(cancellationToken);
         }
     }
 

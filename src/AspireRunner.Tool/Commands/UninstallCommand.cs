@@ -16,7 +16,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
 
     private readonly IDashboardInstaller _installer = new DashboardInstaller(NullLogger<DashboardInstaller>.Instance);
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
@@ -45,7 +45,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
 
             foreach (var version in installedVersions)
             {
-                success &= await UninstallVersionAsync(version);
+                success &= await UninstallVersionAsync(version, cancellationToken);
             }
 
             return success ? 0 : -99;
@@ -62,13 +62,13 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
 
             if (matchingVersions.Length is 1)
             {
-                return await UninstallVersionAsync(matchingVersions[0]) ? 0 : -99;
+                return await UninstallVersionAsync(matchingVersions[0], cancellationToken) ? 0 : -99;
             }
 
             var versionsToUninstall = await PromptVersionsAsync(matchingVersions);
             foreach (var version in versionsToUninstall)
             {
-                success &= await UninstallVersionAsync(version);
+                success &= await UninstallVersionAsync(version, cancellationToken);
             }
         }
         else
@@ -76,7 +76,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
             var versions = await PromptVersionsAsync(installedVersions);
             foreach (var version in versions)
             {
-                success &= await UninstallVersionAsync(version);
+                success &= await UninstallVersionAsync(version, cancellationToken);
             }
         }
 
@@ -101,14 +101,14 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
         return versions.Where(v => selected == v.ToString());
     }
 
-    internal async Task<bool> UninstallVersionAsync(Version version)
+    internal async Task<bool> UninstallVersionAsync(Version version, CancellationToken cancellationToken)
     {
         var success = false;
 
         try
         {
             Widgets.WriteInterpolated($"Uninstalling version [{Widgets.PrimaryColorText}]{version}[/] ");
-            success = await _installer.RemoveAsync(version, CancellationToken.None).ShowSpinner();
+            success = await _installer.RemoveAsync(version, cancellationToken).ShowSpinner();
 
             Widgets.Write(success ? Widgets.SuccessCheck() : Widgets.ErrorCross());
         }
