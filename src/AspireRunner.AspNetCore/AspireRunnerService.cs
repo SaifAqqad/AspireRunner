@@ -44,6 +44,12 @@ public partial class AspireRunnerService(
     private async Task InitializeDashboard(CancellationToken cancellationToken)
     {
         LogServiceStart();
+        if (string.IsNullOrEmpty(DotnetCli.Path))
+        {
+            WarnDotnetNotFound();
+            return;
+        }
+
         await RunInstallerAsync(cancellationToken);
 
         _aspireDashboard = await factory.CreateDashboardAsync(options.Value);

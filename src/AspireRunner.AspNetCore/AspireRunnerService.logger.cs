@@ -29,6 +29,12 @@ public partial class AspireRunnerService
     public partial void WarnNotInstalled();
 
     [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "The dotnet CLI was not found, make sure it's installed and available in your PATH environment variable."
+    )]
+    public partial void WarnDotnetNotFound();
+
+    [LoggerMessage(
         Level = LogLevel.Information,
         Message = "Found Aspire Dashboard v{Version}"
     )]
