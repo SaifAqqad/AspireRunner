@@ -55,7 +55,7 @@ public static partial class DotnetCli
             }
         }
 
-        throw new ApplicationException("The dotnet CLI was not found in PATH or DOTNET_HOST_PATH environment variables");
+        return string.Empty;
     }
 
     #region Regex
