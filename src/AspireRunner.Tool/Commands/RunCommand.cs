@@ -97,6 +97,12 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
 
+        if (string.IsNullOrEmpty(DotnetCli.Path))
+        {
+            Widgets.Write(Widgets.Error("The dotnet CLI was not found, make sure it's installed and available in your PATH environment variable."));
+            return -100;
+        }
+
         // Prepare dashboard options
         var dashboardOptions = BuildOptions(settings);
         var otlpEndpoints = GetEnabledEndpoints(dashboardOptions);
@@ -246,7 +252,6 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     case ConsoleKey.Escape:
                     {
                         await StopDashboardAsync();
-                        AnsiConsole.Cursor.Show();
                         return 0;
                     }
                     case ConsoleKey.S:
@@ -439,7 +444,6 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         void SignalHandler(PosixSignalContext _)
         {
-            AnsiConsole.Cursor.Show();
             _dashboard?.StopAsync(cancellationToken).Wait(cancellationToken);
         }
     }

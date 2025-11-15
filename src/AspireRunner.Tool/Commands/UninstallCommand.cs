@@ -21,6 +21,12 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
 
+        if (string.IsNullOrEmpty(DotnetCli.Path))
+        {
+            Widgets.Write(Widgets.Error("The dotnet CLI was not found, make sure it's installed and available in your PATH environment variable."));
+            return -100;
+        }
+
         var runningInstance = Dashboard.TryGetRunningInstance();
         if (runningInstance.Dashboard.IsRunning())
         {

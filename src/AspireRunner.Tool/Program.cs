@@ -5,18 +5,6 @@ using System.Text;
 // Ensure console is using UTF-8 encoding
 Console.OutputEncoding = Encoding.UTF8;
 
-if (string.IsNullOrEmpty(DotnetCli.Path))
-{
-    AnsiConsole.Cursor.Show();
-    Widgets.Write([
-        Widgets.Header(),
-        Text.NewLine,
-        Widgets.Error("The dotnet CLI was not found, make sure it's installed and available in your PATH environment variable.")
-    ]);
-
-    return -100;
-}
-
 var app = new CommandApp();
 app.Configure(config =>
 {
@@ -42,4 +30,7 @@ app.Configure(config =>
 });
 
 app.SetDefaultCommand<RunCommand>().WithDescription($"Aspire Runner v{RunnerInfo.Version}");
-return await app.RunAsync(args);
+var exitCode = await app.RunAsync(args);
+
+AnsiConsole.Cursor.Show();
+return exitCode;
