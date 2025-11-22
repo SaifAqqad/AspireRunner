@@ -110,8 +110,8 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         if (dashboardOptions.Runner.AutoUpdate)
         {
             var installer = new DashboardInstaller(Logger.DefaultFactory.CreateLogger<DashboardInstaller>());
-
             Widgets.Write("Checking for updates ");
+
             var result = await installer.EnsureLatestAsync(cancellationToken).ShowSpinner();
             Widgets.Write(Widgets.SuccessCheck(), true);
 

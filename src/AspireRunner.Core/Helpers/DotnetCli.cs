@@ -25,8 +25,7 @@ public static partial class DotnetCli
             return [];
         }
 
-        return runtimesOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => RuntimeOutputRegex().Match(s))
+        return RuntimeOutputRegex().Matches(runtimesOutput)
             .Where(m => m.Success)
             .Select(m => (Name: m.Groups[1].Value, Version: new Version(m.Groups[2].Value, true)))
             .ToArray();
