@@ -37,7 +37,10 @@ if (builder.Environment.IsDevelopment())
 var app = builder.Build();
 
 app.MapOpenApi();
-app.MapScalarApiReference(scalar => scalar.WithLayout(ScalarLayout.Classic));
+app.MapScalarApiReference(scalar => scalar
+    .WithClassicLayout()
+    .WithTheme(ScalarTheme.Laserwave)
+);
 
 app.UseHttpsRedirection();
 
