@@ -3,9 +3,10 @@ using System.Diagnostics;
 
 namespace AspireRunner.Core;
 
-// Only static methods should go here :)
 public partial class Dashboard
 {
+    private static Version[]? _compatibleRuntimes;
+
     /// <summary>
     /// Returns the path to the Aspire Runner folder.
     /// </summary>
@@ -26,10 +27,12 @@ public partial class Dashboard
     /// </summary>
     public static async Task<Version[]> GetCompatibleRuntimesAsync()
     {
-        return (await DotnetCli.GetInstalledRuntimesAsync())
+        _compatibleRuntimes ??= (await DotnetCli.GetInstalledRuntimesAsync())
             .Where(r => r.Name is RequiredRuntimeName && r.Version >= MinimumRuntimeVersion)
             .Select(r => r.Version)
             .ToArray();
+
+        return _compatibleRuntimes;
     }
 
     /// <summary>

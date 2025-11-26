@@ -39,6 +39,11 @@ public static class OptionsExtensions
             envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = UrlHelper.BuildLocalUrl(OtlpOptions.DefaultOtlpGrpcPort);
         }
 
+        if (envVars.TryGetValue("DASHBOARD__MCP__ENDPOINTURL", out var mcpUrl))
+        {
+            envVars["ASPIRE_DASHBOARD_MCP_ENDPOINT_URL"] = mcpUrl;
+        }
+
         if (envVars.TryGetValue("DASHBOARD__FRONTEND__ENDPOINTURLS", out var frontendUrls))
         {
             envVars["ASPNETCORE_URLS"] = frontendUrls;

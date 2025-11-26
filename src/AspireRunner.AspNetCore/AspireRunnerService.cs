@@ -72,9 +72,16 @@ public partial class AspireRunnerService(
             return;
         }
 
+        var compatibleRuntimes = await Dashboard.GetCompatibleRuntimesAsync();
+        if (compatibleRuntimes.Length == 0)
+        {
+            throw new ApplicationException($"The dashboard requires version '{Dashboard.MinimumRuntimeVersion}' or newer of the '{Dashboard.RequiredRuntimeName}' runtime");
+        }
+
         var runnerOptions = options.Value.Runner;
         var installedVersions = Dashboard.GetInstalledVersions();
 
+        var latestRuntimeVersion = compatibleRuntimes.Max();
         if (runnerOptions.PreferredVersion is { } pv && VersionRange.TryParse(pv, out var preferredRange))
         {
             var availableVersions = await installer.GetAvailableVersionsAsync(cancellationToken: cancellationToken);
@@ -96,11 +103,14 @@ public partial class AspireRunnerService(
         if (installedVersions.Length is 0)
         {
             var availableVersions = await installer.GetAvailableVersionsAsync(cancellationToken: cancellationToken);
-            var latestVersion = availableVersions.First();
 
-            if (await installer.InstallAsync(latestVersion, cancellationToken))
+            var latestCompatible = Dashboard.VersionCompatibilityMatrix
+                .FirstOrDefault(v => v.Runtime.IsSatisfied(latestRuntimeVersion))
+                .LastSupportedVersion ?? availableVersions.First();
+
+            if (await installer.InstallAsync(latestCompatible, cancellationToken))
             {
-                LogSuccessfulInstallation(latestVersion);
+                LogSuccessfulInstallation(latestCompatible);
                 return;
             }
 

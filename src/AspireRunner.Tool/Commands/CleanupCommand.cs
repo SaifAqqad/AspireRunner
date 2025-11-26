@@ -2,10 +2,16 @@
 
 public class CleanupCommand : AsyncCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context)
+    public override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
+
+        if (string.IsNullOrEmpty(DotnetCli.Path))
+        {
+            Widgets.Write(Widgets.Error("The dotnet CLI was not found, make sure it's installed and available in your PATH environment variable."));
+            return -100;
+        }
 
         var runningInstance = Dashboard.TryGetRunningInstance();
         if (runningInstance.Dashboard.IsRunning())
@@ -47,7 +53,7 @@ public class CleanupCommand : AsyncCommand
 
         foreach (var version in installedVersions.Skip(1))
         {
-            await command.UninstallVersionAsync(version);
+            await command.UninstallVersionAsync(version, cancellationToken);
         }
 
         return 0;

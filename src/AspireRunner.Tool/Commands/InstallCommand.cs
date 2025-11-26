@@ -20,21 +20,41 @@ public class InstallCommand : AsyncCommand<InstallCommand.Settings>
 
     private readonly IDashboardInstaller _installer = new DashboardInstaller(NullLogger<DashboardInstaller>.Instance);
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         if (context.Name is "install")
         {
             Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
             Widgets.WriteLines(2);
+
+            if (string.IsNullOrEmpty(DotnetCli.Path))
+            {
+                Widgets.Write(Widgets.Error("The dotnet CLI was not found, make sure it's installed and available in your PATH environment variable."));
+                return -100;
+            }
+        }
+
+        var compatibleRuntimes = await Dashboard.GetCompatibleRuntimesAsync();
+        if (compatibleRuntimes.Length == 0)
+        {
+            throw new ApplicationException($"The dashboard requires version '{Dashboard.MinimumRuntimeVersion}' or newer of the '{Dashboard.RequiredRuntimeName}' runtime");
         }
 
         Widgets.Write("Fetching available versions ");
-        var availableVersions = await _installer.GetAvailableVersionsAsync(settings.IncludePrerelease)
+        var availableVersions = await _installer.GetAvailableVersionsAsync(settings.IncludePrerelease, cancellationToken)
             .ShowSpinner(withResult: true);
+
+        var latestRuntimeVersion = compatibleRuntimes.Max();
+        var legacyRuntime = Dashboard.VersionCompatibilityMatrix
+            .FirstOrDefault(v => v.Runtime.IsSatisfied(latestRuntimeVersion));
+
+        availableVersions = availableVersions
+            .Where(v => legacyRuntime == default || v <= legacyRuntime.LastSupportedVersion)
+            .ToArray();
 
         if (availableVersions.Length is 0)
         {
-            Widgets.Write("No versions of the dashboard were found on Nuget", true);
+            Widgets.Write("No compatible versions of the dashboard were found on Nuget", true);
             return 0;
         }
 

@@ -24,8 +24,12 @@ jobs:
         targets:
           - os: ubuntu-latest
             rids: linux-x64
+          - os: ubuntu-latest
+            rids: linux-arm64
           - os: windows-latest
             rids: win-x64
+          - os: windows-latest
+            rids: win-arm64
           - os: macos-latest
             rids: osx-arm64
 
@@ -37,13 +41,13 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.x.x
+          dotnet-version: 10.x.x
 
       - name: Publish
         run: >
           dotnet publish
           -c Release
-          -f net8.0
+          -f net10.0
           -r ${{ matrix.targets.rids }}
           -o ${{env.PROJECT_PATH}}/executable-dist/
           /p:DebugType=None /p:DebugSymbols=false

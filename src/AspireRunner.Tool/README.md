@@ -10,12 +10,17 @@ The dashboard can display OpenTelemetry data (traces, metrics, and logs) from an
 ## Installation
 
 ```bash
-dotnet tool install -g AspireRunner.Tool
+dotnet tool install -g aspirerunner.tool
+```
+
+You can also use `dnx` (.NET 10 and later) to run the tool immediately without installing it
+```bash
+dnx aspirerunner.tool
 ```
 
 ## Usage
 
- <img width="650" height="374.31906614786" alt="Screenshot" src="https://github.com/user-attachments/assets/f7ee6ec9-f2de-4f4f-9bb6-b085f49e1109" />
+![Screenshot](https://gist.github.com/user-attachments/assets/1a8328a6-6c10-4dd5-af7d-3bca865760c9)
 
 > [!NOTE]
 > By default, The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`),

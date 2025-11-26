@@ -4,7 +4,7 @@ namespace AspireRunner.Core;
 
 /// <summary>
 /// Configuration options used by the Aspire Dashboard.
-/// <see href="https://github.com/dotnet/aspire/tree/v9.0.0/src/Aspire.Dashboard/Configuration">Aspire.Dashboard/Configuration</see>
+/// <see href="https://github.com/dotnet/aspire/blob/v13.0.0/src/Aspire.Dashboard/Configuration/DashboardOptions.cs">Aspire.Dashboard/Configuration</see>
 /// </summary>
 public sealed record DashboardOptions
 {
@@ -16,6 +16,8 @@ public sealed record DashboardOptions
     public OtlpOptions Otlp { get; set; } = new();
 
     public FrontendOptions Frontend { get; set; } = new();
+
+    public McpOptions Mcp { get; set; } = new();
 
     public RunnerOptions Runner { get; set; } = new();
 
@@ -136,7 +138,7 @@ public sealed record RunnerOptions
     /// <summary>
     /// Specifies the preferred version of the dashboard to run/download.
     /// </summary>
-    /// <remarks>Can be a specifc version (e.g. <c>9.2.0</c>), or a valid semver range specifier (e.g. <c>9.x.x</c> or <c>>=9.1.0</c></remarks>
+    /// <remarks>Can be a specific version (e.g. <c>9.2.0</c>), or a valid semver range specifier (e.g. <c>9.x.x</c> or <c>>=9.1.0</c></remarks>
     public string? PreferredVersion { get; set; }
 
     /// <summary>
@@ -155,6 +157,45 @@ public sealed record RunnerOptions
     public int RunRetryDelay { get; set; } = 5;
 }
 
+public class McpOptions
+{
+    /// <summary>
+    /// Disable MCP integration.
+    /// </summary>
+    public bool? Disabled { get; set; } = false;
+
+    /// <summary>
+    /// The authentication mode for MCP. Can be Unsecured or ApiKey.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public McpAuthMode? AuthMode { get; set; } = McpAuthMode.Unsecured;
+
+    /// <summary>
+    /// Specifies the primary API key. Required when <see cref="AuthMode"/> is ApiKey.
+    /// </summary>
+    public string? PrimaryApiKey { get; set; }
+
+    /// <summary>
+    /// Specifies the secondary API key. Optional; if present, either key may be accepted.
+    /// </summary>
+    public string? SecondaryApiKey { get; set; }
+
+    /// <summary>
+    /// The MCP service endpoint URL.
+    /// </summary>
+    public string? EndpointUrl { get; set; } = "http://localhost:18891";
+
+    /// <summary>
+    /// The public-facing URL for MCP (used by the frontend).
+    /// </summary>
+    public string? PublicUrl { get; set; }
+
+    /// <summary>
+    /// If enabled, will suppress the unsecured message displayed in the dashboard when MCP is configured as Unsecured.
+    /// </summary>
+    public bool SuppressUnsecuredMessage { get; set; }
+}
+
 public enum FrontendAuthMode
 {
     Unsecured,
@@ -162,6 +203,12 @@ public enum FrontendAuthMode
 }
 
 public enum OtlpAuthMode
+{
+    Unsecured,
+    ApiKey
+}
+
+public enum McpAuthMode
 {
     Unsecured,
     ApiKey

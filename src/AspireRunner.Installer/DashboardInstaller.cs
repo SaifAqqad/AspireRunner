@@ -37,7 +37,13 @@ public partial class DashboardInstaller : IDashboardInstaller
 
     public async Task<(bool Success, Version Latest, Version? Installed)> EnsureLatestAsync(CancellationToken cancellationToken = default)
     {
-        var latestRuntimeVersion = (await Dashboard.GetCompatibleRuntimesAsync()).Max();
+        var compatibleRuntimes = await Dashboard.GetCompatibleRuntimesAsync();
+        if (compatibleRuntimes.Length == 0)
+        {
+            throw new ApplicationException($"The dashboard requires version '{Dashboard.MinimumRuntimeVersion}' or newer of the '{Dashboard.RequiredRuntimeName}' runtime");
+        }
+
+        var latestRuntimeVersion = compatibleRuntimes.Max();
         TraceFoundRuntimeVersion(latestRuntimeVersion);
 
         var availableVersions = await GetAvailableVersionsAsync(cancellationToken: cancellationToken);
@@ -48,10 +54,9 @@ public partial class DashboardInstaller : IDashboardInstaller
             throw new ApplicationException("No versions of the Aspire Dashboard are available");
         }
 
-        var latestCompatible = availableVersions
-                .Where(v => IsRuntimeCompatible(v, latestRuntimeVersion!))
-                .Max()
-            ?? availableVersions.First(); // Fallback to the latest version
+        var latestCompatible = Dashboard.VersionCompatibilityMatrix
+            .FirstOrDefault(v => v.Runtime.IsSatisfied(latestRuntimeVersion))
+            .LastSupportedVersion ?? availableVersions.First();
 
         var installedVersions = Dashboard.GetInstalledVersions();
         TraceFoundInstalledVersions(_nugetPackageName, installedVersions);
@@ -168,10 +173,5 @@ public partial class DashboardInstaller : IDashboardInstaller
             LogFailedToExtractFile(ex, sourceFile, targetPath);
             throw;
         }
-    }
-
-    private static bool IsRuntimeCompatible(Version version, Version runtimeVersion)
-    {
-        return runtimeVersion >= Dashboard.MinimumRuntimeVersion && version.Major >= runtimeVersion.Major;
     }
 }

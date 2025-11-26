@@ -33,7 +33,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         [DefaultValue(true)]
         [CommandOption("-s|--https")]
-        [Description("Use HTTPS instead of HTTP, this applies to both the dashboard and the OTLP server")]
+        [Description("Use HTTPS instead of HTTP, this applies to the dashboard, OTLP and MCP servers")]
         public bool? UseHttps { get; init; }
 
         [CommandOption("--dashboard-https")]
@@ -67,7 +67,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         [DefaultValue("localhost")]
         [CommandOption("--hostname")]
-        [Description("The hostname used for the dashboard and OTLP server")]
+        [Description("The hostname used for the dashboard, OTLP and MCP servers")]
         public string? Hostname { get; set; }
 
         [DefaultValue(false)]
@@ -80,6 +80,19 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         [Description("Automatically update the dashboard to the latest version")]
         public bool? AutoUpdate { get; set; }
 
+        [DefaultValue(18891)]
+        [CommandOption("--mcp-port")]
+        [Description("The port the MCP server will listen on, can be disabled by passing 0, disabling will remove MCP-related UI in the dashboard")]
+        public int McpPort { get; set; }
+
+        [CommandOption("--mcp-key")]
+        [Description("The API key to use for the MCP server")]
+        public string? McpKey { get; set; }
+
+        [CommandOption("--mcp-https")]
+        [Description("Use HTTPS instead of HTTP for the MCP server, overrides the global HTTPS option")]
+        public bool? McpHttps { get; set; }
+
         [CommandOption("--verbose")]
         [Description("Enable verbose logging")]
         public bool? Verbose { get; set; }
@@ -91,11 +104,17 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
     private int _currentWidth = AnsiConsole.Profile.Width;
     private int _currentHeight = AnsiConsole.Profile.Height;
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         Logger.Verbose = settings.Verbose ?? false;
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
+
+        if (string.IsNullOrEmpty(DotnetCli.Path))
+        {
+            Widgets.Write(Widgets.Error("The dotnet CLI was not found, make sure it's installed and available in your PATH environment variable."));
+            return -100;
+        }
 
         // Prepare dashboard options
         var dashboardOptions = BuildOptions(settings);
@@ -104,9 +123,9 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         if (dashboardOptions.Runner.AutoUpdate)
         {
             var installer = new DashboardInstaller(Logger.DefaultFactory.CreateLogger<DashboardInstaller>());
-
             Widgets.Write("Checking for updates ");
-            var result = await installer.EnsureLatestAsync().ShowSpinner();
+
+            var result = await installer.EnsureLatestAsync(cancellationToken).ShowSpinner();
             Widgets.Write(Widgets.SuccessCheck(), true);
 
             if (result.Installed != result.Latest)
@@ -125,7 +144,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         if (_dashboard is null)
         {
             Widgets.Write("No dashboards found. Installing the latest version...", true);
-            var installationResult = await new InstallCommand().ExecuteAsync(context, new() { Version = "latest" });
+            var installationResult = await new InstallCommand().ExecuteAsync(context, new() { Version = "latest" }, cancellationToken);
             if (installationResult is not 0)
             {
                 return installationResult;
@@ -215,7 +234,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     {
                         await StopDashboardAsync();
 
-                        await _dashboard.StartAsync();
+                        await _dashboard.StartAsync(cancellationToken);
 
                         // Avoid launching the browser when restarting the dashboard
                         dashboardOptions.Runner.LaunchBrowser = false;
@@ -246,7 +265,6 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                     case ConsoleKey.Escape:
                     {
                         await StopDashboardAsync();
-                        AnsiConsole.Cursor.Show();
                         return 0;
                     }
                     case ConsoleKey.S:
@@ -257,7 +275,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                 }
             }
 
-            await Task.Delay(5).ConfigureAwait(false);
+            await Task.Delay(5, cancellationToken).ConfigureAwait(false);
         }
 
         async Task RenderLiveInitializationAsync()
@@ -292,7 +310,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                         }
 
                         frameIndex++;
-                        await Task.Delay(spinner.Interval);
+                        await Task.Delay(spinner.Interval, cancellationToken);
                     }
                 });
 
@@ -302,7 +320,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         async Task StopDashboardAsync()
         {
-            await _dashboard.StopAsync();
+            await _dashboard.StopAsync(cancellationToken);
 
             _currentLog = [];
             mainLayout["log"].Update(BuildLogPanel().Panel);
@@ -439,8 +457,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         void SignalHandler(PosixSignalContext _)
         {
-            AnsiConsole.Cursor.Show();
-            _dashboard?.StopAsync().Wait();
+            _dashboard?.StopAsync(cancellationToken).Wait(cancellationToken);
         }
     }
 
@@ -472,23 +489,30 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
     private static DashboardOptions BuildOptions(Settings args)
     {
-        var useHttps = args.OtlpHttps ?? args.UseHttps ?? true;
+        var useHttps = args.UseHttps ?? true;
         var corsConfigured = !string.IsNullOrWhiteSpace(args.CorsAllowedOrigins) || !string.IsNullOrWhiteSpace(args.CorsAllowedHeaders);
-        var browserTelemetryEnabled = args.OtlpHttpPort is > 0 and <= 65535 || corsConfigured;
+        var browserTelemetryEnabled = args.OtlpHttpPort is > ushort.MinValue and <= ushort.MaxValue || corsConfigured;
 
         var aspireDashboardOptions = new DashboardOptions
         {
             Frontend = new FrontendOptions
             {
-                BrowserToken = args.AuthToken,
-                AuthMode = args.UseAuth || !string.IsNullOrWhiteSpace(args.AuthToken) ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured,
-                EndpointUrls = UrlHelper.BuildLocalUrl(args.DashboardPort, args.DashboardHttps ?? args.UseHttps ?? true, args.Hostname)
+                BrowserToken = string.IsNullOrWhiteSpace(args.AuthToken) ? null : args.AuthToken,
+                EndpointUrls = UrlHelper.BuildLocalUrl(args.DashboardPort, args.DashboardHttps ?? args.UseHttps ?? true, args.Hostname),
+                AuthMode = args.UseAuth || !string.IsNullOrWhiteSpace(args.AuthToken) ? FrontendAuthMode.BrowserToken : FrontendAuthMode.Unsecured
             },
             Otlp = new OtlpOptions
             {
-                PrimaryApiKey = args.OtlpKey,
                 Cors = browserTelemetryEnabled ? new OtlpCorsOptions() : null,
+                PrimaryApiKey = string.IsNullOrWhiteSpace(args.OtlpKey) ? null : args.OtlpKey,
                 AuthMode = string.IsNullOrWhiteSpace(args.OtlpKey) ? OtlpAuthMode.Unsecured : OtlpAuthMode.ApiKey
+            },
+            Mcp = new McpOptions
+            {
+                Disabled = args.McpPort is 0,
+                PrimaryApiKey = string.IsNullOrWhiteSpace(args.McpKey) ? null : args.McpKey,
+                AuthMode = string.IsNullOrWhiteSpace(args.McpKey) ? McpAuthMode.Unsecured : McpAuthMode.ApiKey,
+                EndpointUrl = args.McpPort is > ushort.MinValue and <= ushort.MaxValue ? UrlHelper.BuildLocalUrl(args.McpPort, args.McpHttps ?? useHttps, args.Hostname) : null
             },
             Runner = new RunnerOptions
             {
@@ -500,14 +524,14 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             }
         };
 
-        if (args.OtlpPort is > 0 and <= 65535)
+        if (args.OtlpPort is > ushort.MinValue and <= ushort.MaxValue)
         {
-            aspireDashboardOptions.Otlp.EndpointUrl = UrlHelper.BuildLocalUrl(args.OtlpPort, useHttps, args.Hostname);
+            aspireDashboardOptions.Otlp.EndpointUrl = UrlHelper.BuildLocalUrl(args.OtlpPort, args.OtlpHttps ?? useHttps, args.Hostname);
         }
 
         if (browserTelemetryEnabled)
         {
-            aspireDashboardOptions.Otlp.HttpEndpointUrl = UrlHelper.BuildLocalUrl(args.OtlpHttpPort ?? OtlpOptions.DefaultOtlpHttpPort, useHttps, args.Hostname);
+            aspireDashboardOptions.Otlp.HttpEndpointUrl = UrlHelper.BuildLocalUrl(args.OtlpHttpPort ?? OtlpOptions.DefaultOtlpHttpPort, args.OtlpHttps ?? useHttps, args.Hostname);
         }
 
         if (aspireDashboardOptions.Otlp.Cors is not null)
