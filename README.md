@@ -15,7 +15,12 @@ Provides a quick and easy to use CLI for downloading and running the Dashboard
 ### Installation
 
 ```bash
-dotnet tool install -g AspireRunner.Tool
+dotnet tool install -g aspirerunner.tool
+```
+
+You can also use `dnx` (.NET 10 and later) to run the tool immediately without installing it
+```bash
+dnx aspirerunner.tool
 ```
 
 ## [AspireRunner.AspNetCore](./src/AspireRunner.AspNetCore/README.md)

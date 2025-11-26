@@ -8,7 +8,7 @@ to be used for local development only.
 [![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.AspNetCore?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.AspNetCore)](https://www.nuget.org/packages/AspireRunner.AspNetCore)
 
 > [!IMPORTANT]
-> The package depends on the dashboard being pre-installed on the machine either using the dotnet tool or
+> The package depends on the dashboard being pre-installed on the machine using either the dotnet tool or
 > the installer package. For more info, refer to the [installer package docs](https://www.nuget.org/packages/AspireRunner.Installer)
 
 ### Example usage
@@ -56,8 +56,8 @@ await app.RunAsync();
 
 ### Configuration
 
-The runner can be configured with the [`AspireDashboardOptions`](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/AspireDashboardOptions.cs) class, which
-contains a subset of the [options supported by the Aspire dashboard](https://github.com/dotnet/aspire/blob/v8.1.0/src/Aspire.Dashboard/Configuration/DashboardOptions.cs), but also
+The runner can be configured with the [`AspireDashboardOptions`](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/DashboardOptions.cs) class, which
+contains a subset of the [options supported by the Aspire dashboard](https://github.com/dotnet/aspire/blob/v13.0.0/src/Aspire.Dashboard/Configuration/DashboardOptions.cs), but also
 has runner-specific options under the `Runner` property:
 
 - `PipeOutput` (bool): When enabled, the runner will pipe the output of the dashboard process to the logger.
