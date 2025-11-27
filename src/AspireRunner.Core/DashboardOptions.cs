@@ -157,7 +157,7 @@ public sealed record RunnerOptions
     public int RunRetryDelay { get; set; } = 5;
 }
 
-public class McpOptions
+public record McpOptions
 {
     /// <summary>
     /// Disable MCP integration.

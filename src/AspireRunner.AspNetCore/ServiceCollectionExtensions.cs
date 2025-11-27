@@ -17,16 +17,17 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddAspireDashboard(this IServiceCollection services, DashboardOptions options)
     {
-        ArgumentNullException.ThrowIfNull(options, nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         return services.AddAspireDashboard(options.CloneTo);
     }
 
     private static void CloneTo(this DashboardOptions srcOptions, DashboardOptions destOptions)
     {
-        destOptions.ApplicationName = srcOptions.ApplicationName;
+        destOptions.Mcp = srcOptions.Mcp with { };
+        destOptions.Otlp = srcOptions.Otlp with { };
         destOptions.Runner = srcOptions.Runner with { };
         destOptions.Frontend = srcOptions.Frontend with { };
-        destOptions.Otlp = srcOptions.Otlp with { };
+        destOptions.ApplicationName = srcOptions.ApplicationName;
         destOptions.TelemetryLimits = srcOptions.TelemetryLimits != null ? srcOptions.TelemetryLimits with { } : null;
     }
 }
