@@ -7,6 +7,9 @@ public partial class Dashboard
     [GeneratedRegex(@"OTLP/(?<protocol>\w+) listening on: +(?<url>https?:\/\/[^\s]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex OtlpEndpointRegex();
 
+    [GeneratedRegex(@"MCP listening on: +(?<url>https?:\/\/[^\s]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    private static partial Regex McpEndpointRegex();
+
     [GeneratedRegex(@$"((?:{LoginConsoleMessage})|(?:{DashboardStartedConsoleMessage})) +(?<url>https?:\/\/[^\s]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex DashboardLaunchUrlRegex();
 

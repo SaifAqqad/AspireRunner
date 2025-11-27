@@ -25,6 +25,8 @@ public partial class Dashboard : IDashboard
 
     public IReadOnlyList<(string Url, string Protocol)>? OtlpEndpoints { get; private set; }
 
+    public string? McpEndpoint { get; private set; }
+
     public bool HasErrors { get; private set; }
 
     public bool IsRunning => _dashboardProcess.IsRunning();
@@ -34,6 +36,8 @@ public partial class Dashboard : IDashboard
     public event Action<string>? DashboardStarted;
 
     public event Action<(string Url, string Protocol)>? OtlpEndpointReady;
+
+    public event Action<string>? McpEndpointReady;
 
     internal Dashboard(Version version, string dllPath, DashboardOptions options, ILogger<Dashboard> logger)
     {
@@ -193,6 +197,12 @@ public partial class Dashboard : IDashboard
 
             OtlpEndpointReady?.Invoke(endpoint);
         }
+
+        if (McpEndpointRegex().Match(output) is { Success: true } mcpMatch)
+        {
+            McpEndpoint = UrlHelper.ReplaceDefaultRoute(mcpMatch.Groups["url"].Value);
+            McpEndpointReady?.Invoke(McpEndpoint);
+        }
     }
 
     private Task LaunchBrowserAsync(string url)
@@ -221,6 +231,7 @@ public partial class Dashboard : IDashboard
     {
         Url = null;
         HasErrors = false;
+        McpEndpoint = null;
         OtlpEndpoints = null;
         _lastOutput = null;
         _lastOutputTime = null;

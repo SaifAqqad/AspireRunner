@@ -185,7 +185,8 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             .AddColumn("Authentication", c => c.Centered().Width(35).NoWrap())
             .AddRow("Dashboard".Widget(), defaultStatus)
             .AddRow("OTLP/gRPC".Widget(), defaultStatus)
-            .AddRow("OTLP/HTTP".Widget(), defaultStatus);
+            .AddRow("OTLP/HTTP".Widget(), defaultStatus)
+            .AddRow("MCP".Widget(), defaultStatus);
 
         var actions = new Columns(
             Widgets.KeyActionDescriptor("S", "Stop"),
@@ -304,7 +305,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                         UpdateTableCells(currentFrame);
                         ctx.Refresh();
 
-                        if (_dashboard.Url != null && _dashboard.OtlpEndpoints?.Count == otlpEndpoints.Count)
+                        if (_dashboard.Url != null && _dashboard.OtlpEndpoints?.Count == otlpEndpoints.Count && (dashboardOptions.Mcp.Disabled is true || _dashboard.McpEndpoint != null))
                         {
                             break;
                         }
@@ -374,11 +375,27 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             }
             else
             {
-                table.UpdateCell(1, 1, Widgets.TableColumn([Widgets.StatusSymbol(true)], HorizontalAlignment.Center));
-                table.UpdateCell(1, 2, Widgets.TableColumn([$"[{Widgets.PrimaryColorText}]{settings.OtlpHttpPort}[/]".Widget()], HorizontalAlignment.Center));
+                table.UpdateCell(2, 1, Widgets.TableColumn([Widgets.StatusSymbol(true)], HorizontalAlignment.Center));
+                table.UpdateCell(2, 2, Widgets.TableColumn([$"[{Widgets.PrimaryColorText}]{settings.OtlpHttpPort}[/]".Widget()], HorizontalAlignment.Center));
                 if (!string.IsNullOrWhiteSpace(settings.OtlpKey))
                 {
-                    table.UpdateCell(1, 3, Widgets.TableColumn([$"x-otlp-api-key=[{Widgets.PrimaryColorText}]{settings.OtlpKey.Truncate(18)}[/]".Widget()], HorizontalAlignment.Center));
+                    table.UpdateCell(2, 3, Widgets.TableColumn([$"x-otlp-api-key=[{Widgets.PrimaryColorText}]{settings.OtlpKey.Truncate(18)}[/]".Widget()], HorizontalAlignment.Center));
+                }
+            }
+
+            if (dashboardOptions.Mcp.Disabled is true || _dashboard.McpEndpoint is null)
+            {
+                table.UpdateCell(3, 1, defaultContent);
+                table.UpdateCell(3, 2, "");
+                table.UpdateCell(3, 3, "");
+            }
+            else
+            {
+                table.UpdateCell(3, 1, Widgets.TableColumn([Widgets.StatusSymbol(true)], HorizontalAlignment.Center));
+                table.UpdateCell(3, 2, Widgets.TableColumn([$"[{Widgets.PrimaryColorText}]{settings.McpPort}[/]".Widget()], HorizontalAlignment.Center));
+                if (!string.IsNullOrWhiteSpace(settings.McpKey))
+                {
+                    table.UpdateCell(3, 3, Widgets.TableColumn([$"x-mcp-api-key=[{Widgets.PrimaryColorText}]{settings.McpKey.Truncate(18)}[/]".Widget()], HorizontalAlignment.Center));
                 }
             }
         }
@@ -394,6 +411,9 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
             table.UpdateCell(2, 1, defaultStatus);
             table.UpdateCell(2, 2, "");
             table.UpdateCell(2, 3, "");
+            table.UpdateCell(3, 1, defaultStatus);
+            table.UpdateCell(3, 2, "");
+            table.UpdateCell(3, 3, "");
         }
 
         bool CheckDashboardStatusChanged()

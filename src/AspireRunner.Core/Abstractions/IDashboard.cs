@@ -33,6 +33,11 @@ public interface IDashboard
     event Action<(string Url, string Protocol)>? OtlpEndpointReady;
 
     /// <summary>
+    /// Triggered when the MCP endpoint is ready to be used.
+    /// </summary>
+    event Action<string>? McpEndpointReady;
+
+    /// <summary>
     /// Starts the Aspire Dashboard process.
     /// </summary>
     Task StartAsync(CancellationToken cancellationToken = default);
