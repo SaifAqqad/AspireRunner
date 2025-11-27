@@ -24,7 +24,7 @@ above.
 
 ## Usage
 
-![Screenshot](https://github.com/user-attachments/assets/83f8c41a-8fc8-40b2-8ebb-0841a42dbd47)
+![Screenshot](https://github.com/user-attachments/assets/bf61dff9-3dcc-4f84-946b-d19fa33a0b6a)
 
 > [!NOTE]
 > By default, The runner will download the dashboard to the user's `.dotnet` directory (`~/.dotnet/.AspireRunner`),
