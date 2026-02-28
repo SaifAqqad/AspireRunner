@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -37,6 +37,12 @@ public partial class AspireRunnerService(
             return Task.CompletedTask;
         }
 
+        if (options.Value.Runner.Mode is RunningMode.Standalone)
+        {
+            LogServiceStopBackground();
+            return Task.CompletedTask;
+        }
+
         LogServiceStop();
         return _aspireDashboard.StopAsync(CancellationToken.None);
     }
@@ -68,6 +74,11 @@ public partial class AspireRunnerService(
     private async Task RunInstallerAsync(CancellationToken cancellationToken)
     {
         if (installer is null)
+        {
+            return;
+        }
+
+        if (options.Value.Runner.Mode is RunningMode.Standalone && Dashboard.TryGetRunningInstance().Dashboard.IsRunning())
         {
             return;
         }

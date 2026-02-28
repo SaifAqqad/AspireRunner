@@ -28,6 +28,12 @@ public partial class Dashboard
     private partial void WarnExistingInstance(int pid);
 
     [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Aspire dashboard is already running"
+    )]
+    private partial void LogDashboardAlreadyRunning();
+
+    [LoggerMessage(
         Level = LogLevel.Error,
         Message = "Failed to start Dashboard process"
     )]
