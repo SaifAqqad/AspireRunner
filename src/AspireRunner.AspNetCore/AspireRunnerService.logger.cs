@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace AspireRunner.AspNetCore;
 
@@ -15,6 +15,12 @@ public partial class AspireRunnerService
         Message = "Stopping the Aspire Runner Service"
     )]
     public partial void LogServiceStop();
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Aspire Dashboard is running in standalone mode; Stop action ignored"
+    )]
+    public partial void LogServiceStopBackground();
 
     [LoggerMessage(
         Level = LogLevel.Information,

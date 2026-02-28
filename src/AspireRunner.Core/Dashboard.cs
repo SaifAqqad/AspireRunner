@@ -1,4 +1,4 @@
-﻿using AspireRunner.Core.Extensions;
+using AspireRunner.Core.Extensions;
 using Medallion.Threading.FileSystem;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -83,6 +83,12 @@ public partial class Dashboard : IDashboard
             return;
         }
 
+        if (Options.Runner.Mode is RunningMode.Standalone)
+        {
+            _dashboardProcess = null;
+            return;
+        }
+
         try
         {
             _stopRequested = true;
@@ -115,7 +121,23 @@ public partial class Dashboard : IDashboard
 
             if (instance.Dashboard.IsRunning())
             {
-                if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.ReplaceExisting || !instance.Runner.IsRunning())
+                if (Options.Runner.Mode is RunningMode.Standalone)
+                {
+                    // Reuse the existing dashboard process instead of restarting
+                    _dashboardProcess = ProcessHelper.GetProcessOrDefault(instance.Dashboard.Id);
+                    if (_dashboardProcess is not null)
+                    {
+                        LogDashboardAlreadyRunning();
+                        if (Options.Runner.RestartOnFailure)
+                        {
+                            RegisterProcessExitHandler();
+                        }
+                        PersistInstance();
+                        return true;
+                    }
+                    // Process exited between check and now, fall through to start new
+                }
+                else if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.ReplaceExisting || !instance.Runner.IsRunning())
                 {
                     instance.Dashboard.Kill(true);
                 }
