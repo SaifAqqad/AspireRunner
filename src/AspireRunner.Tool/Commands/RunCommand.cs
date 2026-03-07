@@ -166,15 +166,23 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         Widgets.WriteInterpolated($"Found dashboard version [{Widgets.PrimaryColorText}]{_dashboard.Version}[/] at {_dashboard.InstallationPath}", true);
 
+        var (dashboard, runner) = Dashboard.TryGetRunningInstance();
+        if (!settings.AllowMultipleInstances && dashboard.IsRunning() && !runner.IsRunning())
+        {
+            // Kill orphaned instance first
+            Widgets.Write(Widgets.Warn($"An orphaned dashboard instance (PID: [{Widgets.PrimaryColorText}]{dashboard.Id}[/]) was found, killing it before starting a new one..."), true);
+            dashboard.Kill(true);
+        }
+
         await _dashboard.StartAsync(CancellationToken.None);
         _dashboardStarted = _dashboard.IsRunning;
 
         if (!_dashboardStarted)
         {
-            var runningInstance = Dashboard.TryGetRunningInstance();
-            if (runningInstance.Runner.IsRunning() || runningInstance.Dashboard.IsRunning())
+            (dashboard, runner) = Dashboard.TryGetRunningInstance();
+            if (dashboard.IsRunning() || runner.IsRunning())
             {
-                Widgets.Write(Widgets.Error($"Another instance of the dashboard is already running{Environment.NewLine}Runner PID: [{Widgets.PrimaryColorText}]{runningInstance.Runner?.Id}[/], Dashboard PID: [{Widgets.PrimaryColorText}]{runningInstance.Dashboard?.Id}[/]"));
+                Widgets.Write(Widgets.Error($"Another instance of the dashboard is already running{Environment.NewLine}Runner PID: [{Widgets.PrimaryColorText}]{runner?.Id}[/], Dashboard PID: [{Widgets.PrimaryColorText}]{dashboard?.Id}[/]"));
                 return -2;
             }
 

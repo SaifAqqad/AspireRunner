@@ -39,6 +39,11 @@ public static partial class Widgets
         return new Markup($"\n[red bold]Error[/] {error}\n");
     }
 
+    public static Renderable Warn(string error)
+    {
+        return new Markup($"\n[yellow on black bold]Warn[/] {error}\n");
+    }
+
     public static Renderable Link(string url, string? text = null, int? maxWidth = null)
     {
         var display = string.IsNullOrWhiteSpace(text) ? url : text;
