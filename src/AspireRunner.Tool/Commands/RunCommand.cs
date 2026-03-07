@@ -72,7 +72,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         [DefaultValue(false)]
         [CommandOption("-m|--multiple")]
-        [Description("Allow running multiple instances of the dashboard, if not passed, existing instances will be replaced")]
+        [Description("Allow running multiple instances of the dashboard, which might still fail if they're configured to use the same ports")]
         public bool AllowMultipleInstances { get; set; }
 
         [DefaultValue(true)]
@@ -171,6 +171,14 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
 
         if (!_dashboardStarted)
         {
+            var runningInstance = Dashboard.TryGetRunningInstance();
+            if (runningInstance.Runner.IsRunning() || runningInstance.Dashboard.IsRunning())
+            {
+                Widgets.Write(Widgets.Error($"Another instance of the dashboard is already running{Environment.NewLine}Runner PID: [{Widgets.PrimaryColorText}]{runningInstance.Runner?.Id}[/], Dashboard PID: [{Widgets.PrimaryColorText}]{runningInstance.Dashboard?.Id}[/]"));
+                return -2;
+            }
+
+            Widgets.Write(Widgets.Error("Failed to start the dashboard"));
             return -1;
         }
 
@@ -540,7 +548,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
                 PipeOutput = args.Verbose ?? false,
                 LaunchBrowser = args.LaunchBrowser,
                 AutoUpdate = args.AutoUpdate ?? true,
-                SingleInstanceHandling = args.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.ReplaceExisting
+                SingleInstanceHandling = args.AllowMultipleInstances ? SingleInstanceHandling.Ignore : SingleInstanceHandling.WarnAndExit
             }
         };
 
