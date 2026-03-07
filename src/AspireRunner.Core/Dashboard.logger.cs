@@ -29,9 +29,9 @@ public partial class Dashboard
 
     [LoggerMessage(
         Level = LogLevel.Information,
-        Message = "Aspire dashboard is already running"
+        Message = "Reusing an existing Aspire Dashboard instance, Process Id = {PID}"
     )]
-    private partial void LogDashboardAlreadyRunning();
+    private partial void LogReusingRunningDashboard(int pid);
 
     [LoggerMessage(
         Level = LogLevel.Error,
@@ -44,6 +44,12 @@ public partial class Dashboard
         Message = "Failed to start Dashboard"
     )]
     private partial void LogFailedToStartDashboard(Exception exception);
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Aspire Dashboard is running in standalone mode, ignoring stop request..."
+    )]
+    public partial void LogStandaloneStopIgnored();
 
     [LoggerMessage(
         Level = LogLevel.Warning,

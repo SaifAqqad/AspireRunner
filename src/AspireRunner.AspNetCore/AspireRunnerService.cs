@@ -37,12 +37,6 @@ public partial class AspireRunnerService(
             return Task.CompletedTask;
         }
 
-        if (options.Value.Runner.Mode is RunningMode.Standalone)
-        {
-            LogServiceStopBackground();
-            return Task.CompletedTask;
-        }
-
         LogServiceStop();
         return _aspireDashboard.StopAsync(CancellationToken.None);
     }

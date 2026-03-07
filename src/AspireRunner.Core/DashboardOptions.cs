@@ -163,22 +163,6 @@ public sealed record RunnerOptions
     public RunningMode Mode { get; set; } = RunningMode.Embed;
 }
 
-/// <summary>
-/// How the Aspire Dashboard runs relative to the host application.
-/// </summary>
-public enum RunningMode
-{
-    /// <summary>
-    /// Dashboard is tied to the host; it starts and stops with the host and can be replaced when the host restarts.
-    /// </summary>
-    Embed = 0,
-
-    /// <summary>
-    /// Dashboard runs as a standalone process; it is not terminated when the host stops, and the host reuses an existing dashboard if one is already running.
-    /// </summary>
-    Standalone = 1
-}
-
 public record McpOptions
 {
     /// <summary>
@@ -254,4 +238,17 @@ public enum SingleInstanceHandling
     /// Kills the existing instance and starts a new one.
     /// </summary>
     ReplaceExisting = 2
+}
+
+public enum RunningMode
+{
+    /// <summary>
+    /// Dashboard is tied to the host; it starts and stops with the host and can be replaced when the host restarts.
+    /// </summary>
+    Embed = 0,
+
+    /// <summary>
+    /// Dashboard runs as a standalone process; it is not terminated when the host stops, and the host reuses an existing dashboard if one is already running.
+    /// </summary>
+    Standalone = 1
 }

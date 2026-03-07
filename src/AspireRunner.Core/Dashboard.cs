@@ -83,6 +83,7 @@ public partial class Dashboard : IDashboard
             return;
         }
 
+        _stopRequested = true;
         if (Options.Runner.Mode is RunningMode.Standalone)
         {
             _dashboardProcess = null;
@@ -91,7 +92,6 @@ public partial class Dashboard : IDashboard
 
         try
         {
-            _stopRequested = true;
             await Task.Run(() => _dashboardProcess?.Kill(true), cancellationToken);
         }
         catch (InvalidOperationException)
@@ -124,27 +124,25 @@ public partial class Dashboard : IDashboard
                 if (Options.Runner.Mode is RunningMode.Standalone)
                 {
                     // Reuse the existing dashboard process instead of restarting
-                    _dashboardProcess = ProcessHelper.GetProcessOrDefault(instance.Dashboard.Id);
-                    if (_dashboardProcess is not null)
+                    _dashboardProcess = instance.Dashboard;
+                    LogReusingRunningDashboard(_dashboardProcess.Id);
+
+                    if (Options.Runner.RestartOnFailure)
                     {
-                        LogDashboardAlreadyRunning();
-                        if (Options.Runner.RestartOnFailure)
-                        {
-                            RegisterProcessExitHandler();
-                        }
-                        PersistInstance();
-                        return true;
+                        RegisterProcessExitHandler();
                     }
-                    // Process exited between check and now, fall through to start new
+
+                    return true;
                 }
-                else if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.ReplaceExisting || !instance.Runner.IsRunning())
+
+                if (!instance.Runner.IsRunning() || Options.Runner.SingleInstanceHandling is SingleInstanceHandling.ReplaceExisting)
                 {
                     instance.Dashboard.Kill(true);
                 }
                 else if (Options.Runner.SingleInstanceHandling is SingleInstanceHandling.WarnAndExit)
                 {
                     WarnExistingInstance(instance.Dashboard.Id);
-                    return false;
+                    return true;
                 }
             }
 
