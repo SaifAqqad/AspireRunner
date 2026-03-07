@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/Examples/">
+    <Project Path="Examples/WebApiExample/WebApiExample.csproj" />
+    <Project Path="Examples/WebApiExample2/WebApiExample2.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/AspireRunner.AspNetCore/AspireRunner.AspNetCore.csproj" />
+    <Project Path="src/AspireRunner.Core/AspireRunner.Core.csproj" />
+    <Project Path="src/AspireRunner.Installer/AspireRunner.Installer.csproj" />
+    <Project Path="src/AspireRunner.Tool/AspireRunner.Tool.csproj" />
+  </Folder>
+</Solution>
