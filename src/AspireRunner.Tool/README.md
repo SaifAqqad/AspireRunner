@@ -55,7 +55,7 @@ OPTIONS:
         --cors-origins                    The allowed origins for CORS requests, separated by a comma. A wildcard (*) can be used to allow any domain
         --cors-headers                    The allowed headers for CORS requests, separated by a comma
         --hostname           localhost    The hostname used for the dashboard, OTLP and MCP servers
-    -m, --multiple                        Allow running multiple instances of the dashboard, which might still fail if they're configured to use the same ports
+    -m, --multiple                        Allow running multiple instances of the dashboard, if not passed, existing instances will be replaced
         --auto-update        True         Automatically update the dashboard to the latest version
         --mcp-port           18891        The port the MCP server will listen on, can be disabled by passing 0, disabling will remove MCP-related UI in the dashboard
         --mcp-key                         The API key to use for the MCP server
