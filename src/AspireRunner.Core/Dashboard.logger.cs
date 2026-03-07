@@ -49,7 +49,7 @@ public partial class Dashboard
         Level = LogLevel.Information,
         Message = "Aspire Dashboard is running in standalone mode, ignoring stop request..."
     )]
-    public partial void LogStandaloneStopIgnored();
+    public partial void LogStopIgnoredStandaloneMode();
 
     [LoggerMessage(
         Level = LogLevel.Warning,

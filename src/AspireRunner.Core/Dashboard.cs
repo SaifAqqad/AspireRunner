@@ -87,6 +87,7 @@ public partial class Dashboard : IDashboard
         if (Options.Runner.Mode is RunningMode.Standalone)
         {
             _dashboardProcess = null;
+            LogStopIgnoredStandaloneMode();
             return;
         }
 

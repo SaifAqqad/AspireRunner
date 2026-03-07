@@ -74,6 +74,7 @@ public partial class AspireRunnerService(
 
         if (options.Value.Runner.Mode is RunningMode.Standalone && Dashboard.TryGetRunningInstance().Dashboard.IsRunning())
         {
+            LogSkipInstallerInstanceRunning();
             return;
         }
 
