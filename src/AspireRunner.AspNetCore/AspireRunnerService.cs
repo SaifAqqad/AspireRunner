@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -69,6 +69,12 @@ public partial class AspireRunnerService(
     {
         if (installer is null)
         {
+            return;
+        }
+
+        if (options.Value.Runner.Mode is RunningMode.Standalone && Dashboard.TryGetRunningInstance().Dashboard.IsRunning())
+        {
+            LogSkipInstallerInstanceRunning();
             return;
         }
 

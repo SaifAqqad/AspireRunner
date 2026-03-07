@@ -25,7 +25,7 @@ builder.Services.AddOpenTelemetry()
     .WithLogging(logsBuilder => logsBuilder
         .AddOtlpExporter(ConfigureOtelExporter))
     .ConfigureResource(resourceBuilder => resourceBuilder
-        .AddService("WebApiExample1"));
+        .AddService("WebApiExample2"));
 
 // Add the Aspire Dashboard and installer to the application
 if (builder.Environment.IsDevelopment())

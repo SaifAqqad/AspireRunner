@@ -54,6 +54,12 @@ public partial class AspireRunnerService
 
     [LoggerMessage(
         Level = LogLevel.Information,
+        Message = "An instance of the Aspire Dashboard is already running, skipping installer..."
+    )]
+    public partial void LogSkipInstallerInstanceRunning();
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
         Message = "Successfully updated Aspire Dashboard version to {Version}"
     )]
     public partial void LogSuccessfulUpdate(Version version);
