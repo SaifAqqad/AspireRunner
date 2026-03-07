@@ -5,7 +5,7 @@ A dotnet tool for downloading and running the standalone [Aspire Dashboard](http
 The dashboard can display OpenTelemetry data (traces, metrics, and logs) from any application. However, the dotnet tool is specifically intended for use during local development and testing
 
 [![NuGet Version](https://img.shields.io/nuget/vpre/AspireRunner.Tool?style=flat&logo=nuget&color=%230078d4&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FAspireRunner.Tool)](https://www.nuget.org/packages/AspireRunner.Tool)
-     
+
 
 ## Installation
 
@@ -19,7 +19,7 @@ dnx aspirerunner.tool
 ```
 
 Alternatively, you can download a self-contained version of the tool from [GitHub releases](https://github.com/SaifAqqad/AspireRunner/releases), in this case,
-the runner will not require any specific runtime to be installed, however, the dashboard will still require .NET 8.0 or 
+the runner will not require any specific runtime to be installed, however, the dashboard will still require .NET 8.0 or
 above.
 
 ## Usage
@@ -55,7 +55,7 @@ OPTIONS:
         --cors-origins                    The allowed origins for CORS requests, separated by a comma. A wildcard (*) can be used to allow any domain
         --cors-headers                    The allowed headers for CORS requests, separated by a comma
         --hostname           localhost    The hostname used for the dashboard, OTLP and MCP servers
-    -m, --multiple                        Allow running multiple instances of the dashboard, if not passed, existing instances will be replaced
+    -m, --multiple                        Allow running multiple instances of the dashboard, which might still fail if they're configured to use the same ports
         --auto-update        True         Automatically update the dashboard to the latest version
         --mcp-port           18891        The port the MCP server will listen on, can be disabled by passing 0, disabling will remove MCP-related UI in the dashboard
         --mcp-key                         The API key to use for the MCP server

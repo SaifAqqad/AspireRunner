@@ -62,16 +62,20 @@ has runner-specific options under the `Runner` property:
 
 - `PipeOutput` (bool): When enabled, the runner will pipe the output of the dashboard process to the logger.
 - `LaunchBrowser` (bool): When enabled, the runner will attempt to launch the dashboard in the default browser on startup.
-- `SingleInstanceHandling` ([enum](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/AspireDashboardOptions.cs#L134)): Controls how the runner should
+- `SingleInstanceHandling` ([enum](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/DashboardOptions.cs#L223)): Controls how the runner should
   handle multiple instances of the dashboard process:
-    1. `WarnAndExit`: Logs a warning and exits if an existing instance is found.
+    1. `WarnAndExit`: Logs a warning and exits if an existing instance is found. (default value)
     2. `Ignore`: Disables checking for running instances of the Aspire Dashboard. Note that new instances will fail to start if an existing one is using the same port
     3. `ReplaceExisting`: Kills any existing instance before starting a new one.
-- `AutoUpdate` (bool): When enabled, the runner will automatically check and update the dashboard to the latest 
+- `AutoUpdate` (bool): When enabled, the runner will automatically check and update the dashboard to the latest
   version at startup.
-- `PreferredVersion` (string): The version of the dashboard to download/run. If not specified or invalid, the latest 
+- `PreferredVersion` (string): The version of the dashboard to download/run. If not specified or invalid, the latest
   version will be used.
-- `RestartOnFailure` (bool): When enabled, the runner will automatically restart the dashboard if it exits 
+- `RestartOnFailure` (bool): When enabled, the runner will automatically restart the dashboard if it exits
   unexpectedly.
 - `RunRetryCount` (int): The number of times to retry running the dashboard if it fails to start
 - `RunRetryDelay` (int): The delay between retry attempts to restart the dashboard (in seconds).
+- `Mode` ([enum](https://github.com/SaifAqqad/AspireRunner/blob/main/src/AspireRunner.Core/DashboardOptions.cs#L243)): Defines how the dashboard runs relative to the host application:
+    1. `Embed`: Dashboard is tied to the host; it starts and stops with the host and can be replaced when the host
+       restarts. (default value)
+    2. `Standalone`: Dashboard runs as a standalone process; it is not terminated when the host stops, and the host reuses an existing dashboard if one is already running.
