@@ -17,8 +17,6 @@ public sealed record DashboardOptions
 
     public FrontendOptions Frontend { get; set; } = new();
 
-    public McpOptions Mcp { get; set; } = new();
-
     public RunnerOptions Runner { get; set; } = new();
 
     public TelemetryLimitOptions? TelemetryLimits { get; set; }
@@ -161,45 +159,6 @@ public sealed record RunnerOptions
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RunningMode Mode { get; set; } = RunningMode.Embed;
-}
-
-public record McpOptions
-{
-    /// <summary>
-    /// Disable MCP integration.
-    /// </summary>
-    public bool? Disabled { get; set; } = false;
-
-    /// <summary>
-    /// The authentication mode for MCP. Can be Unsecured or ApiKey.
-    /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public McpAuthMode? AuthMode { get; set; } = McpAuthMode.Unsecured;
-
-    /// <summary>
-    /// Specifies the primary API key. Required when <see cref="AuthMode"/> is ApiKey.
-    /// </summary>
-    public string? PrimaryApiKey { get; set; }
-
-    /// <summary>
-    /// Specifies the secondary API key. Optional; if present, either key may be accepted.
-    /// </summary>
-    public string? SecondaryApiKey { get; set; }
-
-    /// <summary>
-    /// The MCP service endpoint URL.
-    /// </summary>
-    public string? EndpointUrl { get; set; } = "http://localhost:18891";
-
-    /// <summary>
-    /// The public-facing URL for MCP (used by the frontend).
-    /// </summary>
-    public string? PublicUrl { get; set; }
-
-    /// <summary>
-    /// If enabled, will suppress the unsecured message displayed in the dashboard when MCP is configured as Unsecured.
-    /// </summary>
-    public bool SuppressUnsecuredMessage { get; set; }
 }
 
 public enum FrontendAuthMode

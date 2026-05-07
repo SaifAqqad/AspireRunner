@@ -23,7 +23,6 @@ public static class ServiceCollectionExtensions
 
     private static void CloneTo(this DashboardOptions srcOptions, DashboardOptions destOptions)
     {
-        destOptions.Mcp = srcOptions.Mcp with { };
         destOptions.Otlp = srcOptions.Otlp with { };
         destOptions.Runner = srcOptions.Runner with { };
         destOptions.Frontend = srcOptions.Frontend with { };

@@ -13,6 +13,5 @@
     <Project Path="src/AspireRunner.AspNetCore/AspireRunner.AspNetCore.csproj" />
     <Project Path="src/AspireRunner.Core/AspireRunner.Core.csproj" />
     <Project Path="src/AspireRunner.Installer/AspireRunner.Installer.csproj" />
-    <Project Path="src/AspireRunner.Tool/AspireRunner.Tool.csproj" />
   </Folder>
 </Solution>

@@ -26,22 +26,17 @@ public static class OptionsExtensions
 
         if (envVars.TryGetValue("DASHBOARD__OTLP__ENDPOINTURL", out var otlpUrl))
         {
-            envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = otlpUrl;
+            envVars["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"] = otlpUrl;
         }
 
         if (envVars.TryGetValue("DASHBOARD__OTLP__HTTPENDPOINTURL", out var httpOtlpUrl))
         {
-            envVars["DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"] = httpOtlpUrl;
+            envVars["ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"] = httpOtlpUrl;
         }
 
         if (options.Otlp.EndpointUrl is null && options.Otlp.HttpEndpointUrl is null)
         {
-            envVars["DOTNET_DASHBOARD_OTLP_ENDPOINT_URL"] = UrlHelper.BuildLocalUrl(OtlpOptions.DefaultOtlpGrpcPort);
-        }
-
-        if (envVars.TryGetValue("DASHBOARD__MCP__ENDPOINTURL", out var mcpUrl))
-        {
-            envVars["ASPIRE_DASHBOARD_MCP_ENDPOINT_URL"] = mcpUrl;
+            envVars["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"] = UrlHelper.BuildLocalUrl(OtlpOptions.DefaultOtlpGrpcPort);
         }
 
         if (envVars.TryGetValue("DASHBOARD__FRONTEND__ENDPOINTURLS", out var frontendUrls))
