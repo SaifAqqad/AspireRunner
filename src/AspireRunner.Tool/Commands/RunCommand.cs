@@ -104,7 +104,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
     private int _currentWidth = AnsiConsole.Profile.Width;
     private int _currentHeight = AnsiConsole.Profile.Height;
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
+    protected override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         Logger.Verbose = settings.Verbose ?? false;
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
@@ -144,7 +144,7 @@ public class RunCommand : AsyncCommand<RunCommand.Settings>
         if (_dashboard is null)
         {
             Widgets.Write("No dashboards found. Installing the latest version...", true);
-            var installationResult = await new InstallCommand().ExecuteAsync(context, new() { Version = "latest" }, cancellationToken);
+            var installationResult = await (new InstallCommand() as ICommand).ExecuteAsync(context, new InstallCommand.Settings { Version = "latest" }, cancellationToken);
             if (installationResult is not 0)
             {
                 return installationResult;

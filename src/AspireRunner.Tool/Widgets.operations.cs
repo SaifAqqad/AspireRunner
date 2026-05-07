@@ -1,5 +1,4 @@
-﻿using Spectre.Console.Extensions;
-using Spectre.Console.Rendering;
+﻿using Spectre.Console.Rendering;
 
 namespace AspireRunner.Tool;
 

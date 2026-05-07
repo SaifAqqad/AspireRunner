@@ -2,7 +2,7 @@
 
 public class CleanupCommand : AsyncCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
+    protected override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);

@@ -16,7 +16,7 @@ public class UninstallCommand : AsyncCommand<UninstallCommand.Settings>
 
     private readonly IDashboardInstaller _installer = new DashboardInstaller(NullLogger<DashboardInstaller>.Instance);
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
+    protected override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         Widgets.Write([Widgets.Header(), Widgets.RunnerVersion]);
         Widgets.WriteLines(2);
