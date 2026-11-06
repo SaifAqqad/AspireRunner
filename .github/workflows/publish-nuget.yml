@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # required for NuGet trusted publishing (OIDC)
 
 jobs:
   publish:
@@ -32,10 +33,17 @@ jobs:
       - name: Package
         run: dotnet pack --no-build
 
+      # Exchange the GitHub OIDC token for a short-lived nuget.org API key
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: SaifAqqad
+
       - name: Publish packages to nuget
         run: dotnet nuget push "./dist/nupkg/*.nupkg" --skip-duplicate -s https://api.nuget.org/v3/index.json -k "$NUGET_API_KEY"
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
 
       - uses: actions/upload-artifact@v4
         with:
