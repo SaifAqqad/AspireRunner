@@ -34,7 +34,7 @@
 
   <ItemGroup>
     <PackageReference Include="NuGet.Protocol" Version="7.9.0" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup>
